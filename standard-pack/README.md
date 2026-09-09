@@ -10,6 +10,11 @@ This opt-in, first-party, lightweight pack provides common administration/gamepl
 
 All five are independent API 0.6 packages and **server-only**. Commands work with a vanilla Minecraft 26.1.2 client; Solaris Loader UI could enhance presentation later but is never required. Recommended startup/listing order is the order above. There are currently no manifest-level required dependencies because API 0.6 has no cross-plugin service/query contract; in particular, permissions cannot yet enforce another plugin's commands.
 
-Copy the five plugin directories into the configured `[plugins].directory` plugin root. The server discovers and loads them from that directory (strict deployments also list them under `plugins.expected`); there is no server-side bundled-selection list.
+Install explicitly with `bash install.sh --directory /path/to/server/plugins`
+from the repository root; see the [deployment guide](../README.md#deployment-workflow).
+The installer selects these five packages by default and refuses existing
+package paths. Set the same `[plugins].directory`, enable `plugins.strict`,
+list every deployed id under `plugins.expected`, and run `solaris --check`.
+There is no server-side bundled-selection list.
 
 Intentionally omitted: giant command catalogs, multiworld/cross-dimension teleport, auctions, multiple currencies, nations/geopolitics/upkeep/war, bulk world editing, WorldGuard-style general regions, unbounded logs, and guessed rollback. WorldEdit/WorldGuard-like editing and general protection should remain separate utilities. Each plugin README states the exact current API limitation affecting its subset.

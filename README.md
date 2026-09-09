@@ -20,17 +20,49 @@ Demonstrations and worldgen selectors:
 
 ## Deployment workflow
 
-No build step. Copy the package directories you want into the server's
-`[plugins].directory` (see `example.toml` in the core repo):
+Installation is explicit; installing the core server does not enable plugins.
+On Linux, clone this repository and run its installer (Bash 4+, GNU coreutils).
+No compilation or network access is needed after cloning:
 
 ```sh
-cp -r solaris-permissions solaris-essentials solaris-economy \
-  solaris-towns solaris-audit /path/to/server/plugins/
+git clone https://github.com/kaiserproger/solaris-default-plugins.git
+bash solaris-default-plugins/install.sh --directory /path/to/server/plugins
 ```
 
-Production deployments should set `plugins.strict = true` and list every
-deployed plugin id under `plugins.expected`. The core binary loads deployed
-directories only; it never compiles these sources in.
+With no package names, the installer selects the five standard packages.
+To install only selected packages:
+
+```sh
+bash solaris-default-plugins/install.sh --directory /path/to/server/plugins \
+  solaris-essentials solaris-audit
+```
+
+Stop the server first. The installer refuses existing package paths, including
+symlinks; it never updates packages, overwrites operator configuration, or
+edits `server.toml`. All selected sources and destinations are checked before
+copying. For reproducible deployment, check out a reviewed commit before
+running the installer. To update, back up the deployed package and its data,
+review configuration/API changes, and deliberately replace the package while
+the server is stopped; this command is installation, not an updater.
+
+Set `[plugins].directory` to the destination. Production deployments should
+set `plugins.strict = true` and list every deployed plugin id under
+`plugins.expected`. For the full standard pack:
+
+```toml
+[plugins]
+directory = "/path/to/server/plugins"
+strict = true
+expected = [
+  "solaris-permissions", "solaris-essentials", "solaris-economy",
+  "solaris-towns", "solaris-audit",
+]
+```
+
+Then run `solaris --check --config server.toml` before starting the server.
+Package API/configuration validation belongs to the server, not the copy
+script. The core binary loads deployed directories only; it never compiles
+these sources in. Manual copying remains valid on other platforms.
 
 ## Lua API contract
 
