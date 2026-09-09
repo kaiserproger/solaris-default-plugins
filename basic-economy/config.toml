@@ -1,0 +1,43 @@
+# The one physical item used as money. Change `resource` to another item such
+# as `minecraft:gold_ingot`; singular/plural are display text only.
+[currency]
+resource = "minecraft:emerald"
+singular = "Emerald"
+plural = "Emeralds"
+
+# Entering this inclusive cuboid opens the shop.
+[zone]
+id = "economy-market"
+dimension = "minecraft:overworld"
+minimum = { x = -8, y = 60, z = -8 }
+maximum = { x = 8, y = 100, z = 8 }
+
+# Left click buys atomically: currency is removed, the product is granted, and
+# the refund ledger advances together. Right click reverses a recorded purchase.
+[[catalog]]
+id = "apples"
+resource = "minecraft:apple"
+count = 2
+label = "Apples"
+price = 3
+
+[[catalog]]
+id = "bread"
+resource = "minecraft:bread"
+count = 1
+label = "Bread"
+price = 5
+
+[[catalog]]
+id = "steak"
+resource = "minecraft:cooked_beef"
+count = 2
+label = "Steak"
+price = 8
+
+[[catalog]]
+id = "iron-pickaxe"
+resource = "minecraft:iron_pickaxe"
+count = 1
+label = "Iron Pickaxe"
+price = 18

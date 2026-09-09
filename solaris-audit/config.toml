@@ -1,0 +1,6 @@
+dimension = "minecraft:overworld"
+maximum_records = 24
+maximum_pending_records = 32
+default_lookup_count = 10
+maximum_lookup_count = 20
+maximum_radius = 64

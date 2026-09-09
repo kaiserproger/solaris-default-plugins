@@ -1,0 +1,7 @@
+id = "basic-economy"
+name = "Basic Economy"
+version = "0.4.0"
+api = "0.6.0"
+events = ["server.started", "player.left", "player.zone_entered", "player.zone_exited"]
+capabilities = ["storage", "inventory_menus", "inventory_storage_transactions", "zones"]
+player_commands = ["economy"]

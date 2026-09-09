@@ -1,0 +1,8 @@
+dimension = "minecraft:overworld"
+minimum_y = -64
+maximum_y = 319
+maximum_towns = 12
+maximum_members_per_town = 8
+maximum_claims = 24
+invite_expiry_ticks = 2400
+maximum_online_query = 256

@@ -1,0 +1,38 @@
+id = "settlement-prototype"
+name = "Settlement Prototype"
+version = "0.1.0"
+api = "0.6.0"
+
+[worldgen]
+settlement_profile = "plains_village_prototype"
+
+[[worldgen.settlement_buildings]]
+id = "square"
+template = "plains_fountain"
+role = "meeting_point"
+
+[[worldgen.settlement_buildings]]
+id = "home"
+template = "plains_small_house"
+role = "home"
+
+[[worldgen.settlement_buildings]]
+id = "smithy"
+template = "plains_toolsmith"
+role = "workplace"
+
+[[worldgen.settlement_inhabitants]]
+id = "resident"
+kind = "villager"
+building = "home"
+job = "unemployed"
+
+[[worldgen.settlement_inhabitants]]
+id = "smith"
+kind = "villager"
+building = "smithy"
+job = "toolsmith"
+
+[[worldgen.settlement_extensions]]
+id = "smithy-work-orders"
+building = "smithy"

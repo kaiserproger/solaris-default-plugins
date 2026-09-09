@@ -1,0 +1,14 @@
+# Local deployment / operator scratch roots. Package dirs are source.
+deploy/
+deployed/
+server/
+world/
+*.tmp
+*.bak
+*~
+
+# Editor / OS cruft.
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

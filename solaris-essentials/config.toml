@@ -1,0 +1,4 @@
+maximum_homes_per_player = 3
+maximum_warps = 16
+tpa_expiry_ticks = 1200
+maximum_online_query = 256

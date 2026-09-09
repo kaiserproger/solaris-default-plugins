@@ -1,0 +1,7 @@
+id = "solaris-permissions"
+name = "Solaris Permissions"
+version = "0.1.0"
+api = "0.6.0"
+events = ["server.started"]
+capabilities = ["storage"]
+player_commands = ["perm"]

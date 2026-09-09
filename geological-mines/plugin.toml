@@ -1,0 +1,8 @@
+id = "geological-mines"
+name = "Geological Mines"
+version = "0.1.0"
+api = "0.6.0"
+player_commands = ["geology"]
+
+[worldgen]
+ore_profile = "realistic_deposits"

@@ -1,0 +1,14 @@
+default_group = "player"
+maximum_assignments = 64
+
+[[groups]]
+name = "player"
+nodes = ["solaris.essentials.use", "solaris.economy.use", "solaris.towns.use"]
+
+[[groups]]
+name = "moderator"
+nodes = ["solaris.essentials.use", "solaris.economy.use", "solaris.towns.use", "solaris.audit.lookup"]
+
+[[groups]]
+name = "admin"
+nodes = ["*"]

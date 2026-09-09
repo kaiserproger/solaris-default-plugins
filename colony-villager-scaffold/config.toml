@@ -1,0 +1,31 @@
+[colony]
+id = "starter"
+name = "Starter Colony"
+dimension = "minecraft:overworld"
+
+[colony.home]
+x = 0.5
+y = 64.0
+z = 0.5
+
+[colony.zone]
+id = "starter-colony"
+min_x = -32.0
+min_y = -64.0
+min_z = -32.0
+max_x = 32.0
+max_y = 320.0
+max_z = 32.0
+
+[villagers]
+binding_radius = 24.0
+home_speed = 0.3
+default_role = "worker"
+default_order = "home"
+roles = ["worker", "guard", "farmer"]
+orders = ["home", "hold", "follow"]
+
+[limits]
+max_pending_requests = 32
+max_active_players = 64
+max_active_members = 3

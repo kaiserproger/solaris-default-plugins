@@ -1,0 +1,7 @@
+id = "land-claims"
+name = "Land Claims"
+version = "0.1.0"
+api = "0.6.0"
+events = ["server.started"]
+capabilities = ["storage", "zones"]
+player_commands = ["claim"]

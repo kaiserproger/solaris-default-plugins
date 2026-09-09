@@ -1,0 +1,5 @@
+currency_name = "coins"
+starting_balance = 100
+maximum_balance = 1000000000
+maximum_accounts = 48
+maximum_transfer_tokens = 32

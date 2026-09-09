@@ -1,0 +1,11 @@
+# Claims are whole 16x16 chunks in this dimension. API 0.6 command events do
+# not expose the player's dimension, so install this plugin only on the current
+# single-dimension runtime; every /claim command maps to this dimension.
+dimension = "minecraft:overworld"
+
+# Vertical protection range used for every claimed chunk.
+minimum_y = -64
+maximum_y = 319
+
+# Keeps the single durable claim index below the plugin-storage value limit.
+maximum_claims = 48
