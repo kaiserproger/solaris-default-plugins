@@ -1,5 +1,11 @@
 # Evidence receipt — solaris-settlements squad handle + order path
 
+
+> Tracked receipts in this directory are narrative: `receipt.md` and
+> `live-report2.json` record commands and their outcomes. The live entity
+> samples and the drive logs that produced them are deliberately **not**
+> tracked — they are world/server state, which this repository never commits.
+> They were removed from the first commit that carried them and stay local.
 Scope: `solaris-settlements/main.lua` only. No core edit. No commit.
 
 ## What changed
