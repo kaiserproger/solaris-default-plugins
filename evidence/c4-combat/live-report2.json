@@ -1,0 +1,74 @@
+{
+ "steps": [
+  {
+   "name": "create-second",
+   "command": "/settlement create p2town small",
+   "ok": true,
+   "observed": [
+    "Founded p2town (small hamlet)."
+   ]
+  },
+  {
+   "name": "create-third",
+   "command": "/settlement create p3town small",
+   "ok": true,
+   "observed": [
+    "Founded p3town (small hamlet)."
+   ]
+  },
+  {
+   "name": "create-duplicate-refusal",
+   "command": "/settlement create p2town small",
+   "ok": true,
+   "observed": [
+    "That settlement name is taken."
+   ]
+  },
+  {
+   "name": "fund",
+   "command": "/settlement fund p1town house_sm_1",
+   "ok": true,
+   "observed": [
+    "Reserved real materials for house_sm_1 (9d04b2423579acbb7fac576db984b4b7). Build: /settlement build p1town house_sm_1"
+   ]
+  },
+  {
+   "name": "buildings-funded",
+   "command": "/settlement buildings p1town",
+   "ok": true,
+   "observed": [
+    "house_sm_1 solaris:house_small funded"
+   ]
+  },
+  {
+   "name": "build",
+   "command": "/settlement build p1town house_sm_1",
+   "ok": false,
+   "observed": [
+    "Plugin is busy; retry."
+   ]
+  },
+  {
+   "name": "buildings-committed",
+   "command": "/settlement buildings p1town",
+   "ok": true,
+   "observed": [
+    "house_sm_1 solaris:house_small committed"
+   ]
+  },
+  {
+   "name": "populate",
+   "command": "/settlement populate p1town",
+   "ok": false,
+   "observed": []
+  }
+ ],
+ "failures": [
+  "build",
+  "populate"
+ ],
+ "samples": [],
+ "entities": [],
+ "resident": null,
+ "error": "no resident name"
+}

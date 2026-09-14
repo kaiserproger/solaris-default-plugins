@@ -1,0 +1,1398 @@
+id = "solaris:mine_entrance"
+revision = 1
+
+[footprint]
+size = [11, 5, 9]
+anchor = [5, 0, 8]
+
+[[palette]]
+index = 0
+block = "minecraft:gravel"
+properties = {}
+
+[[palette]]
+index = 1
+block = "minecraft:oak_log"
+properties = { axis = "x" }
+
+[[palette]]
+index = 2
+block = "minecraft:oak_log"
+properties = { axis = "y" }
+
+[[palette]]
+index = 3
+block = "minecraft:rail"
+properties = { shape = "north_south", waterlogged = "false" }
+
+[[palette]]
+index = 4
+block = "minecraft:stone_bricks"
+properties = {}
+
+[[palette]]
+index = 5
+block = "minecraft:torch"
+properties = {}
+
+[[blocks]]
+x = 0
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 0
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 0
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 0
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 0
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 0
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 0
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 0
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 0
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 0
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 0
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 1
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 1
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 1
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 1
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 1
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 1
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 1
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 1
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 1
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 1
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 1
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 2
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 2
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 2
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 2
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 2
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 2
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 2
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 2
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 2
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 2
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 2
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 3
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 3
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 3
+y = 1
+z = 1
+palette = 5
+
+[[blocks]]
+x = 3
+y = 1
+z = 2
+palette = 2
+
+[[blocks]]
+x = 3
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 3
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 3
+y = 2
+z = 2
+palette = 2
+
+[[blocks]]
+x = 3
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 3
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 3
+y = 3
+z = 2
+palette = 2
+
+[[blocks]]
+x = 3
+y = 3
+z = 3
+palette = 1
+
+[[blocks]]
+x = 3
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 3
+y = 4
+z = 3
+palette = 5
+
+[[blocks]]
+x = 4
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 4
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 4
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 4
+y = 3
+z = 3
+palette = 1
+
+[[blocks]]
+x = 4
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 5
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 5
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 5
+y = 1
+z = 2
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 3
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 4
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 5
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 6
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 7
+palette = 3
+
+[[blocks]]
+x = 5
+y = 1
+z = 8
+palette = 3
+
+[[blocks]]
+x = 5
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 5
+y = 3
+z = 3
+palette = 1
+
+[[blocks]]
+x = 5
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 6
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 6
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 6
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 6
+y = 3
+z = 3
+palette = 1
+
+[[blocks]]
+x = 6
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 7
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 7
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 7
+y = 1
+z = 1
+palette = 5
+
+[[blocks]]
+x = 7
+y = 1
+z = 2
+palette = 2
+
+[[blocks]]
+x = 7
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 7
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 7
+y = 2
+z = 2
+palette = 2
+
+[[blocks]]
+x = 7
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 7
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 7
+y = 3
+z = 2
+palette = 2
+
+[[blocks]]
+x = 7
+y = 3
+z = 3
+palette = 1
+
+[[blocks]]
+x = 7
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 7
+y = 4
+z = 3
+palette = 5
+
+[[blocks]]
+x = 8
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 8
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 8
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 8
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 8
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 8
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 8
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 8
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 8
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 8
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 8
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 9
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 9
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 9
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 9
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 9
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 9
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 9
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 9
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 9
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 9
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 9
+y = 3
+z = 4
+palette = 4
+
+[[blocks]]
+x = 10
+y = 0
+z = 0
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 1
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 2
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 3
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 4
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 5
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 6
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 7
+palette = 0
+
+[[blocks]]
+x = 10
+y = 0
+z = 8
+palette = 0
+
+[[blocks]]
+x = 10
+y = 1
+z = 2
+palette = 4
+
+[[blocks]]
+x = 10
+y = 1
+z = 3
+palette = 4
+
+[[blocks]]
+x = 10
+y = 1
+z = 4
+palette = 4
+
+[[blocks]]
+x = 10
+y = 2
+z = 2
+palette = 4
+
+[[blocks]]
+x = 10
+y = 2
+z = 3
+palette = 4
+
+[[blocks]]
+x = 10
+y = 2
+z = 4
+palette = 4
+
+[[blocks]]
+x = 10
+y = 3
+z = 2
+palette = 4
+
+[[blocks]]
+x = 10
+y = 3
+z = 3
+palette = 4
+
+[[blocks]]
+x = 10
+y = 3
+z = 4
+palette = 4
+
+[[poi]]
+id = "shaft"
+kind = "work"
+at = [3, 1, 6]
+capacity = 6
+
+[[street_connection]]
+at = [5, 0, 8]
+facing = "south"
+
+[[stage]]
+id = "foundation"
+blocks = [
+  { x = 0, y = 0, z = 0, palette = 0 },
+  { x = 0, y = 0, z = 1, palette = 0 },
+  { x = 0, y = 0, z = 2, palette = 0 },
+  { x = 0, y = 0, z = 3, palette = 0 },
+  { x = 0, y = 0, z = 4, palette = 0 },
+  { x = 0, y = 0, z = 5, palette = 0 },
+  { x = 0, y = 0, z = 6, palette = 0 },
+  { x = 0, y = 0, z = 7, palette = 0 },
+  { x = 0, y = 0, z = 8, palette = 0 },
+  { x = 1, y = 0, z = 0, palette = 0 },
+  { x = 1, y = 0, z = 1, palette = 0 },
+  { x = 1, y = 0, z = 2, palette = 0 },
+  { x = 1, y = 0, z = 3, palette = 0 },
+  { x = 1, y = 0, z = 4, palette = 0 },
+  { x = 1, y = 0, z = 5, palette = 0 },
+  { x = 1, y = 0, z = 6, palette = 0 },
+  { x = 1, y = 0, z = 7, palette = 0 },
+  { x = 1, y = 0, z = 8, palette = 0 },
+  { x = 2, y = 0, z = 0, palette = 0 },
+  { x = 2, y = 0, z = 1, palette = 0 },
+  { x = 2, y = 0, z = 2, palette = 0 },
+  { x = 2, y = 0, z = 3, palette = 0 },
+  { x = 2, y = 0, z = 4, palette = 0 },
+  { x = 2, y = 0, z = 5, palette = 0 },
+  { x = 2, y = 0, z = 6, palette = 0 },
+  { x = 2, y = 0, z = 7, palette = 0 },
+  { x = 2, y = 0, z = 8, palette = 0 },
+  { x = 3, y = 0, z = 0, palette = 0 },
+  { x = 3, y = 0, z = 1, palette = 0 },
+  { x = 3, y = 0, z = 2, palette = 0 },
+  { x = 3, y = 0, z = 3, palette = 0 },
+  { x = 3, y = 0, z = 4, palette = 0 },
+  { x = 3, y = 0, z = 5, palette = 0 },
+  { x = 3, y = 0, z = 6, palette = 0 },
+  { x = 3, y = 0, z = 7, palette = 0 },
+  { x = 3, y = 0, z = 8, palette = 0 },
+  { x = 4, y = 0, z = 0, palette = 0 },
+  { x = 4, y = 0, z = 1, palette = 0 },
+  { x = 4, y = 0, z = 2, palette = 0 },
+  { x = 4, y = 0, z = 3, palette = 0 },
+  { x = 4, y = 0, z = 4, palette = 0 },
+  { x = 4, y = 0, z = 5, palette = 0 },
+  { x = 4, y = 0, z = 6, palette = 0 },
+  { x = 4, y = 0, z = 7, palette = 0 },
+  { x = 4, y = 0, z = 8, palette = 0 },
+  { x = 5, y = 0, z = 0, palette = 0 },
+  { x = 5, y = 0, z = 1, palette = 0 },
+  { x = 5, y = 0, z = 2, palette = 0 },
+  { x = 5, y = 0, z = 3, palette = 0 },
+  { x = 5, y = 0, z = 4, palette = 0 },
+  { x = 5, y = 0, z = 5, palette = 0 },
+  { x = 5, y = 0, z = 6, palette = 0 },
+  { x = 5, y = 0, z = 7, palette = 0 },
+  { x = 5, y = 0, z = 8, palette = 0 },
+  { x = 6, y = 0, z = 0, palette = 0 },
+  { x = 6, y = 0, z = 1, palette = 0 },
+  { x = 6, y = 0, z = 2, palette = 0 },
+  { x = 6, y = 0, z = 3, palette = 0 },
+  { x = 6, y = 0, z = 4, palette = 0 },
+  { x = 6, y = 0, z = 5, palette = 0 },
+  { x = 6, y = 0, z = 6, palette = 0 },
+  { x = 6, y = 0, z = 7, palette = 0 },
+  { x = 6, y = 0, z = 8, palette = 0 },
+  { x = 7, y = 0, z = 0, palette = 0 },
+  { x = 7, y = 0, z = 1, palette = 0 },
+  { x = 7, y = 0, z = 2, palette = 0 },
+  { x = 7, y = 0, z = 3, palette = 0 },
+  { x = 7, y = 0, z = 4, palette = 0 },
+  { x = 7, y = 0, z = 5, palette = 0 },
+  { x = 7, y = 0, z = 6, palette = 0 },
+  { x = 7, y = 0, z = 7, palette = 0 },
+  { x = 7, y = 0, z = 8, palette = 0 },
+  { x = 8, y = 0, z = 0, palette = 0 },
+  { x = 8, y = 0, z = 1, palette = 0 },
+  { x = 8, y = 0, z = 2, palette = 0 },
+  { x = 8, y = 0, z = 3, palette = 0 },
+  { x = 8, y = 0, z = 4, palette = 0 },
+  { x = 8, y = 0, z = 5, palette = 0 },
+  { x = 8, y = 0, z = 6, palette = 0 },
+  { x = 8, y = 0, z = 7, palette = 0 },
+  { x = 8, y = 0, z = 8, palette = 0 },
+  { x = 9, y = 0, z = 0, palette = 0 },
+  { x = 9, y = 0, z = 1, palette = 0 },
+  { x = 9, y = 0, z = 2, palette = 0 },
+  { x = 9, y = 0, z = 3, palette = 0 },
+  { x = 9, y = 0, z = 4, palette = 0 },
+  { x = 9, y = 0, z = 5, palette = 0 },
+  { x = 9, y = 0, z = 6, palette = 0 },
+  { x = 9, y = 0, z = 7, palette = 0 },
+  { x = 9, y = 0, z = 8, palette = 0 },
+  { x = 10, y = 0, z = 0, palette = 0 },
+  { x = 10, y = 0, z = 1, palette = 0 },
+  { x = 10, y = 0, z = 2, palette = 0 },
+  { x = 10, y = 0, z = 3, palette = 0 },
+  { x = 10, y = 0, z = 4, palette = 0 },
+  { x = 10, y = 0, z = 5, palette = 0 },
+  { x = 10, y = 0, z = 6, palette = 0 },
+  { x = 10, y = 0, z = 7, palette = 0 },
+  { x = 10, y = 0, z = 8, palette = 0 },
+]
+
+[[stage]]
+id = "frame"
+blocks = [
+  { x = 0, y = 1, z = 2, palette = 4 },
+  { x = 0, y = 1, z = 3, palette = 4 },
+  { x = 0, y = 1, z = 4, palette = 4 },
+  { x = 0, y = 2, z = 2, palette = 4 },
+  { x = 0, y = 2, z = 3, palette = 4 },
+  { x = 0, y = 2, z = 4, palette = 4 },
+  { x = 0, y = 3, z = 2, palette = 4 },
+  { x = 0, y = 3, z = 3, palette = 4 },
+  { x = 0, y = 3, z = 4, palette = 4 },
+  { x = 1, y = 1, z = 2, palette = 4 },
+  { x = 1, y = 1, z = 3, palette = 4 },
+  { x = 1, y = 1, z = 4, palette = 4 },
+  { x = 1, y = 2, z = 2, palette = 4 },
+  { x = 1, y = 2, z = 3, palette = 4 },
+  { x = 1, y = 2, z = 4, palette = 4 },
+  { x = 1, y = 3, z = 2, palette = 4 },
+  { x = 1, y = 3, z = 3, palette = 4 },
+  { x = 1, y = 3, z = 4, palette = 4 },
+  { x = 2, y = 1, z = 2, palette = 4 },
+  { x = 2, y = 1, z = 3, palette = 4 },
+  { x = 2, y = 1, z = 4, palette = 4 },
+  { x = 2, y = 2, z = 2, palette = 4 },
+  { x = 2, y = 2, z = 3, palette = 4 },
+  { x = 2, y = 2, z = 4, palette = 4 },
+  { x = 2, y = 3, z = 2, palette = 4 },
+  { x = 2, y = 3, z = 3, palette = 4 },
+  { x = 2, y = 3, z = 4, palette = 4 },
+  { x = 3, y = 1, z = 2, palette = 2 },
+  { x = 3, y = 1, z = 3, palette = 4 },
+  { x = 3, y = 1, z = 4, palette = 4 },
+  { x = 3, y = 2, z = 2, palette = 2 },
+  { x = 3, y = 2, z = 3, palette = 4 },
+  { x = 3, y = 2, z = 4, palette = 4 },
+  { x = 3, y = 3, z = 2, palette = 2 },
+  { x = 3, y = 3, z = 3, palette = 1 },
+  { x = 3, y = 3, z = 4, palette = 4 },
+  { x = 4, y = 3, z = 2, palette = 4 },
+  { x = 4, y = 3, z = 3, palette = 1 },
+  { x = 4, y = 3, z = 4, palette = 4 },
+  { x = 5, y = 3, z = 2, palette = 4 },
+  { x = 5, y = 3, z = 3, palette = 1 },
+  { x = 5, y = 3, z = 4, palette = 4 },
+  { x = 6, y = 3, z = 2, palette = 4 },
+  { x = 6, y = 3, z = 3, palette = 1 },
+  { x = 6, y = 3, z = 4, palette = 4 },
+  { x = 7, y = 1, z = 2, palette = 2 },
+  { x = 7, y = 1, z = 3, palette = 4 },
+  { x = 7, y = 1, z = 4, palette = 4 },
+  { x = 7, y = 2, z = 2, palette = 2 },
+  { x = 7, y = 2, z = 3, palette = 4 },
+  { x = 7, y = 2, z = 4, palette = 4 },
+  { x = 7, y = 3, z = 2, palette = 2 },
+  { x = 7, y = 3, z = 3, palette = 1 },
+  { x = 7, y = 3, z = 4, palette = 4 },
+  { x = 8, y = 1, z = 2, palette = 4 },
+  { x = 8, y = 1, z = 3, palette = 4 },
+  { x = 8, y = 1, z = 4, palette = 4 },
+  { x = 8, y = 2, z = 2, palette = 4 },
+  { x = 8, y = 2, z = 3, palette = 4 },
+  { x = 8, y = 2, z = 4, palette = 4 },
+  { x = 8, y = 3, z = 2, palette = 4 },
+  { x = 8, y = 3, z = 3, palette = 4 },
+  { x = 8, y = 3, z = 4, palette = 4 },
+  { x = 9, y = 1, z = 2, palette = 4 },
+  { x = 9, y = 1, z = 3, palette = 4 },
+  { x = 9, y = 1, z = 4, palette = 4 },
+  { x = 9, y = 2, z = 2, palette = 4 },
+  { x = 9, y = 2, z = 3, palette = 4 },
+  { x = 9, y = 2, z = 4, palette = 4 },
+  { x = 9, y = 3, z = 2, palette = 4 },
+  { x = 9, y = 3, z = 3, palette = 4 },
+  { x = 9, y = 3, z = 4, palette = 4 },
+  { x = 10, y = 1, z = 2, palette = 4 },
+  { x = 10, y = 1, z = 3, palette = 4 },
+  { x = 10, y = 1, z = 4, palette = 4 },
+  { x = 10, y = 2, z = 2, palette = 4 },
+  { x = 10, y = 2, z = 3, palette = 4 },
+  { x = 10, y = 2, z = 4, palette = 4 },
+  { x = 10, y = 3, z = 2, palette = 4 },
+  { x = 10, y = 3, z = 3, palette = 4 },
+  { x = 10, y = 3, z = 4, palette = 4 },
+]
+
+[[stage]]
+id = "fitting"
+blocks = [
+  { x = 3, y = 1, z = 1, palette = 5 },
+  { x = 3, y = 4, z = 3, palette = 5 },
+  { x = 5, y = 1, z = 2, palette = 3 },
+  { x = 5, y = 1, z = 3, palette = 3 },
+  { x = 5, y = 1, z = 4, palette = 3 },
+  { x = 5, y = 1, z = 5, palette = 3 },
+  { x = 5, y = 1, z = 6, palette = 3 },
+  { x = 5, y = 1, z = 7, palette = 3 },
+  { x = 5, y = 1, z = 8, palette = 3 },
+  { x = 7, y = 1, z = 1, palette = 5 },
+  { x = 7, y = 4, z = 3, palette = 5 },
+]

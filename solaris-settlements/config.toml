@@ -1,0 +1,37 @@
+# Solaris Settlements operator configuration.
+# Every value is read once at startup; an invalid value rejects the package.
+
+# API 0.6.0 player-command snapshots carry no dimension, so every settlement
+# operation maps to this dimension.
+dimension = "minecraft:overworld"
+
+maximum_settlements = 24
+maximum_buildings = 64
+maximum_residents = 40
+maximum_squads = 8
+maximum_pending_operations = 16
+
+# Simulation-tick cadence of the settlement economy cycle (20 ticks = 1 s).
+cycle_ticks = 1200
+# How long a verified carried-supply projection stays valid before it is zeroed.
+supply_ticks = 4800
+
+# Items that count as verified food when a player inventories their supply.
+food_items = [
+  "minecraft:bread",
+  "minecraft:wheat",
+  "minecraft:cooked_beef",
+  "minecraft:cooked_porkchop",
+  "minecraft:cooked_chicken",
+  "minecraft:cooked_mutton",
+  "minecraft:cooked_cod",
+  "minecraft:cooked_salmon",
+  "minecraft:baked_potato",
+  "minecraft:carrot",
+  "minecraft:apple",
+]
+
+# Items that count as a verified treasury amount. The plugin never mints money;
+# a deposit needs a writable settlement container endpoint, which does not exist
+# in API 0.6.0 yet.
+money_items = ["minecraft:emerald", "minecraft:gold_ingot"]

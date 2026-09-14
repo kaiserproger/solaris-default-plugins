@@ -1,0 +1,8 @@
+[ok] create-second: ['Founded p2town (small hamlet).']
+[ok] create-third: ['Founded p3town (small hamlet).']
+[ok] create-duplicate-refusal: ['That settlement name is taken.']
+[ok] fund: ['Reserved real materials for house_sm_1 (9d04b2423579acbb7fac576db984b4b7). Build: /settlement build p1town house_sm_1']
+[ok] buildings-funded: ['house_sm_1 solaris:house_small funded']
+[FAIL] build: ['Plugin is busy; retry.']
+[ok] buildings-committed: ['house_sm_1 solaris:house_small committed']
+[FAIL] populate: []

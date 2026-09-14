@@ -7,6 +7,9 @@ world/
 *.bak
 *~
 
+# Agent-harness config for this checkout (advisor wiring, not package source).
+WATCHDOG.yml
+
 # Editor / OS cruft.
 .vscode/
 .idea/

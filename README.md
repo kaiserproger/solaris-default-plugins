@@ -14,9 +14,24 @@ towns, audit) — see `standard-pack/README.md` for scope and omissions:
 
 Demonstrations and worldgen selectors:
 
-- `basic-economy`, `land-claims`, `online-roster`,
-  `colony-villager-scaffold`, `geological-mines`,
-  `settlement-prototype`, `currency-catalog` (fixture)
+- `basic-economy`, `land-claims`, `online-roster`, `geological-mines`,
+  `currency-catalog` (fixture)
+- `solaris-settlements` — the single settlement package (server-side,
+  `structures/*.toml` authored blueprints, no Loader requirement). Installed
+  explicitly; a deployed set holds at most one settlement profile. It replaces
+  the removed `colony-villager-scaffold` and `settlement-prototype` packages,
+  and the core settlement selector must name it (`feudal_settlements`) once the
+  core catalog loader lands.
+
+## Repository layout
+
+- `<package>/` — one deployed plugin package each (see the list above).
+- `standard-pack/` — docs only; the deployed behaviour lives in the five member
+  packages.
+- `tools/` — repository tools (`gen_structures.py` generates and verifies the
+  settlement package's `structures/*.toml`).
+- `evidence/` — point-in-time verification receipts for the settlement wave
+  (what was run, what passed, what was missing). Not a package; never deployed.
 
 ## Deployment workflow
 
@@ -63,6 +78,31 @@ Then run `solaris --check --config server.toml` before starting the server.
 Package API/configuration validation belongs to the server, not the copy
 script. The core binary loads deployed directories only; it never compiles
 these sources in. Manual copying remains valid on other platforms.
+
+### Deployed set used for live verification
+
+Install the five standard packages plus the settlement package explicitly:
+
+```sh
+bash install.sh --directory /path/to/server/plugins \
+  solaris-permissions solaris-essentials solaris-economy solaris-towns \
+  solaris-audit solaris-settlements
+```
+
+```toml
+[plugins]
+directory = "/path/to/server/plugins"
+strict = true
+expected = [
+  "solaris-permissions", "solaris-essentials", "solaris-economy",
+  "solaris-towns", "solaris-audit", "solaris-settlements",
+]
+```
+
+`solaris-settlements` is server-only: it declares no client bundle and no
+Loader capability, so a vanilla client can run `/settlement`. It is the only
+settlement profile in the set — the removed `settlement-prototype` and
+`colony-villager-scaffold` packages must not be deployed beside it.
 
 ## Lua API contract
 

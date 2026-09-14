@@ -1,0 +1,26 @@
+id = "solaris-settlements"
+name = "Solaris Settlements"
+version = "1.0.0"
+api = "0.6.0"
+events = ["server.started"]
+capabilities = [
+  "storage",
+  "storage_batches",
+  "inventory_transfers",
+  "persistent_residents",
+  "resident_work",
+  "resident_orders",
+  "world_sites",
+  "structure_operations",
+  "player_queries",
+]
+required_features = [
+  "storage_batches",
+  "inventory_transfers",
+  "persistent_residents",
+  "resident_work",
+  "resident_orders",
+  "world_sites",
+  "structure_operations",
+]
+player_commands = ["settlement"]
