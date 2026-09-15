@@ -2,14 +2,15 @@
 
 -- Solaris Settlements v1 — the single settlement/profile package (API 0.6.0).
 --
--- Server-side only: no Loader bundle, no client capability, no worldgen
--- selector, works with a vanilla client. Authored blueprints live in
--- `structures/*.toml` of this package (frozen schema 1).
+-- Server data plus verified client content: the package also ships the Loader
+-- bundle `client/settlements-ui.zip`, which declares one settlement screen, and
+-- works with a vanilla client until that bundle is activated. Authored
+-- blueprints live in `structures/*.toml` of this package (frozen schema 1).
 --
 -- Core surface consumed (docs/PLUGINS.md):
 --   settlement sites + staged construction, persistent residents, resident work
---   and squad orders (C4), owned inventory transfers/reservations, durable batch
---   storage.
+--   and squad orders (C4), owned inventory transfers/reservations and the bound
+--   warehouse container, durable batch storage.
 --
 -- Durable model: every record is a versioned string in plugin storage with a
 -- schema tag and a plugin revision, sharded per settlement and bounded by
@@ -23,11 +24,16 @@
 -- treasury only moves through verified item transfers, and a tax only
 -- redistributes an existing balance. A job title never produces items.
 --
+-- The client screen is a projection too: every displayed row and counter comes
+-- from the durable settlement record, the derived resident index, or a live
+-- `query_owned_inventory` read of the warehouse container core bound for this
+-- package. Nothing is rendered from a fabricated row.
+--
 -- Core calls that do not exist yet are reported instead of faked
--- (see MISSING_CORE_CALLS near the end): a writable warehouse endpoint,
--- package structure discovery plus the `feudal_settlements` selector, and any
--- money authority. Resident work, squad orders and demobilisation are wired to
--- the real C4 calls and report exactly what core commits.
+-- (see MISSING_CORE_CALLS near the end): package structure discovery plus the
+-- `feudal_settlements` selector, and any money authority. Resident work, squad
+-- orders and demobilisation are wired to the real C4 calls and report exactly
+-- what core commits.
 
 -- One table of module-level helpers: the main chunk must stay under the Luau
 -- register limit, so the plugin's functions live in `S` instead of ~160
@@ -245,8 +251,29 @@ local STREET_ROUTE_LIMIT = 30
 local INDEX_KEY = "settlements-index-v1"
 local DONE = "-"
 
+-- The Loader bundle `client/settlements-ui.zip` declares exactly one screen, and
+-- this id is byte-identical to its index entry: the Loader drops an open whose
+-- view id is not declared, and core refuses a view id that is not owned by this
+-- plugin. The three action ids are the `action_button` widgets of that screen,
+-- so the client only ever sends one of them and only while the presented model
+-- declares it enabled.
+local VIEW_ID = "solaris-settlements:overview"
+local VIEW_REFRESH = "solaris-settlements:refresh"
+local VIEW_NEXT = "solaris-settlements:page_next"
+local VIEW_PREV = "solaris-settlements:page_prev"
+-- The core model carries at most 64 rows, so the roster is walked 16 rows at a
+-- time and the warehouse stock page is bounded separately. One page is one
+-- kind of row: a roster slice or the stock page, never a mixture.
+local VIEW_PAGE_ROWS = 16
+local VIEW_MAX_STOCK = 64
+local VIEW_TEXT_BYTES = 200
+local VIEW_CELL_BYTES = 250
+local VIEW_DIGITS = "0123456789"
+-- Live client surfaces the plugin keeps bookkeeping for; the oldest is dropped
+-- once this many are live, and the dropped instance answers nothing.
+local MAX_VIEW_SESSIONS = 8
+
 local MISSING_CORE_CALLS: { string } = {
-    "writable warehouse inventory endpoint (C1) — no settlement store can hold goods",
     "package structures/*.toml discovery + feudal_settlements selector (C2) — runtime_unavailable",
     "cross-plugin money authority — treasury moves only by verified transfer",
 }
@@ -385,6 +412,14 @@ local record_versions: any = {}
 local requests: any = {}
 local request_serial = 0
 local cycle_timers: any = {}
+
+-- Live client sessions, both bounded by MAX_VIEW_SESSIONS. `view_sessions`
+-- answers an action by view instance id; `view_opens` binds an in-flight read
+-- to its session by the session's own open request id, which exists from the
+-- moment the open leaves the plugin. Both hold the same session table.
+local view_sessions: any = {}
+local view_opens: any = {}
+local view_order: { any } = {}
 
 local loaded_ids: { string } = {}
 local boot_done = false
@@ -1907,7 +1942,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local COMMAND_HELP = table.concat({
-    "Settlements v1 (server-side):",
+    "Settlements v1:",
     "list | info [name] | create <name> <small|medium|large> | abandon <name>",
     "site [name] | adopt <name> <site_id> | survey <name> [plot|expand|restore]",
     "project <name> <blueprint> here|<x> <y> <z> [0|90|180|270]",
@@ -1915,7 +1950,7 @@ local COMMAND_HELP = table.concat({
     "buildings <name> | promote <name> | branch <name> <estate|fortress|town>",
     "specialize <name> [spec [spec]] | ruin|restore <name>",
     "populate <name> | claim <name> <entity_uuid> | residents <name>",
-    "family <name> <resident> <family> | job <name> <resident> <job|none>",
+    "overview [name] | family <name> <resident> <family> | job <name> <resident> <job|none>",
     "hire <name> <resident> <militia|infantry|spearman|archer> | dismiss <name> <resident>",
     "squad <name> create|add|order|cancel|list ... | supply <name> | deposit <name>",
     "role <name> <uuid> <steward|captain|member>",
@@ -2323,6 +2358,36 @@ S.command_residents = function(event: any, uuid: string, words: { string })
     end
 end
 
+S.command_overview = function(event: any, uuid: string, words: { string })
+    local name = words[2]
+    if name == nil then
+        local record, count = S.view_only_settlement(uuid)
+        if record == nil then
+            if count > 1 then
+                S.usage(event.player_id, "You belong to several settlements; use /settlement overview <name>.")
+            else
+                S.usage(event.player_id, "You are not a member of any loaded settlement.")
+            end
+            return
+        end
+        name = record.name
+    end
+    local record = settlements[name]
+    if record == nil then
+        S.usage(event.player_id, "Settlement not found.")
+        return
+    end
+    if not S.is_member(record, uuid) then
+        S.usage(event.player_id, "You are not a member of " .. record.name .. ".")
+        return
+    end
+    if not S.view_begin(event.player_id, uuid, name, 0) then
+        S.usage(event.player_id, "The overview could not be opened right now; retry shortly.")
+        return
+    end
+    S.usage(event.player_id, "Opened the " .. name .. " overview.")
+end
+
 S.command_supply = function(event: any, uuid: string, words: { string })
     local record = settlements[words[2]]
     if record == nil then
@@ -2351,7 +2416,7 @@ S.command_deposit = function(event: any, uuid: string, words: { string })
         S.usage(event.player_id, "Only the owner or a steward deposits.")
         return
     end
-    S.usage(event.player_id, "Deposits need a writable settlement container endpoint (core C1); none exists yet, so no money was created.")
+    S.usage(event.player_id, "Deposits are not implemented: this package only reads the bound warehouse container, so nothing was deposited and no money was created.")
 end
 
 -- ---------------------------------------------------------------------------
@@ -3038,6 +3103,8 @@ S.dispatch_command = function(event: any)
         S.command_buildings(event, uuid, words)
     elseif action == "residents" and #words == 2 then
         S.command_residents(event, uuid, words)
+    elseif action == "overview" and #words <= 3 then
+        S.command_overview(event, uuid, words)
     elseif action == "supply" and #words == 2 then
         S.command_supply(event, uuid, words)
     elseif action == "deposit" and #words == 2 then
@@ -4459,6 +4526,21 @@ S.handle_value_read = function(entry: any, value: any)
     -- `read_key` names the read either through `kind` or through `purpose`.
     local purpose = entry.purpose or entry.kind
     local id = entry.id
+    if purpose == "overview-building" then
+        local session: any = entry.session
+        if session == nil then return end
+        local building = S.read_building(value)
+        if building == nil then
+            session.stock = nil
+            session.reading = false
+            session.warehouse = "the stored warehouse record could not be decoded"
+            S.view_present(session)
+            return
+        end
+        records[S.building_key(id, building.name)] = building
+        S.view_bind(session, building)
+        return
+    end
     if purpose == "plan-for-fund" then
         local plan = S.read_plan(value)
         if plan == nil then
@@ -4888,6 +4970,18 @@ end
 
 S.handle_settlement_result = function(entry: any, result: any)
     local kind = result.kind
+    if kind == "warehouse" then
+        -- Core answered the bind with the handle it minted for the authored
+        -- container; the overview reads exactly that handle back.
+        S.finish_request(entry)
+        local session: any = view_opens[entry.view]
+        if session == nil then return end
+        local binding = result.binding
+        session.structure = binding.structure_id
+        session.container = binding.container_id
+        S.view_query(session, binding.handle)
+        return
+    end
     if kind == "sites" then
         local page = result.page
         if #page.sites == 0 then
@@ -5215,6 +5309,28 @@ end
 S.handle_inventory_result = function(entry: any, result: any)
     if result.kind == "snapshot" then
         local snapshot = result.inventory
+        if entry.purpose == "overview" then
+            S.finish_request(entry)
+            local session: any = view_opens[entry.view]
+            if session == nil then return end
+            local stock: any = {}
+            for index = 1, #snapshot.slots do
+                local slot = snapshot.slots[index]
+                if slot.item ~= nil and #stock < VIEW_MAX_STOCK then
+                    stock[#stock + 1] = {
+                        resource_id = slot.item.resource_id,
+                        count = slot.item.count,
+                        slot = slot.slot,
+                    }
+                end
+            end
+            session.stock = stock
+            session.reading = false
+            session.warehouse = "container " .. tostring(session.container) .. " of structure "
+                .. tostring(session.structure) .. ", revision " .. tostring(snapshot.fence.revision)
+            S.view_present(session)
+            return
+        end
         if entry.purpose == "supply" then
             local id = entry.id
             local record = settlements[id]
@@ -5718,6 +5834,14 @@ function on_operation_result(event: any)
     if entry == nil then return end
     entry.tick = event.fired_tick
     if event.state == "rejected" or event.failure ~= nil then
+        -- A refused warehouse read is not a chat refusal: the screen is open,
+        -- so the exact reason is presented in the model instead.
+        if entry.view ~= nil then
+            S.finish_request(entry)
+            local session: any = view_opens[entry.view]
+            if session ~= nil then S.view_failed(session, event.failure or event.state) end
+            return
+        end
         if entry.kind == "recover" then
             S.handle_recover(entry, event)
             return
@@ -5908,7 +6032,13 @@ end
 
 function on_plugin_online_result(event: any)
     local entry: any = requests[event.request_id]
-    if entry == nil or entry.kind ~= "online" then return end
+    if entry == nil then return end
+    if entry.kind == "view-request" then
+        S.finish_request(entry)
+        S.view_open_for(entry.player_id, event.players or {})
+        return
+    end
+    if entry.kind ~= "online" then return end
     S.finish_request(entry)
     local id = entry.id
     local record = settlements[id]
@@ -5935,6 +6065,438 @@ function on_plugin_online_result(event: any)
     S.write_settlement_bundle(id, record, {}, "simple", {
         kind = "write-simple", actor = 0, id = id, text = nil,
     })
+end
+
+-- ---------------------------------------------------------------------------
+-- Client view: the declared Loader settlement screen
+-- ---------------------------------------------------------------------------
+
+-- The screen the bundle declares. A `loader.view_request` for the settlement
+-- kind is what the client's key opens; `/settlement overview` reuses the same
+-- builder. Both send only what core can map back to a `paged_table`, a
+-- `resource_panel` and the three `action_button` widgets of that screen.
+
+S.view_clamp = function(value: string, maximum: number): string
+    if #value <= maximum then return value end
+    return string.sub(value, 1, maximum)
+end
+
+-- A bounded deterministic digest of an opaque id, rendered as plain decimal
+-- digits. It names exactly one warehouse binding inside an operation id while
+-- keeping that id inside the core's 64-byte `[a-z0-9_-]` contract.
+S.view_digest = function(value: string): string
+    local hash = 0
+    for index = 1, #value do
+        hash = (hash * 131 + string.byte(value, index)) % 2147483647
+    end
+    local text = ""
+    repeat
+        local digit = hash % 10
+        text = string.sub(VIEW_DIGITS, digit + 1, digit + 1) .. text
+        hash = (hash - digit) / 10
+    until hash == 0
+    return text
+end
+
+S.view_forget = function(session: any)
+    if session.instance ~= nil then view_sessions[session.instance] = nil end
+    view_opens[session.request_id] = nil
+    if session.open_entry ~= nil then S.finish_request(session.open_entry) end
+    for position = #view_order, 1, -1 do
+        if view_order[position] == session then table.remove(view_order, position) end
+    end
+end
+
+S.view_remember = function(session: any)
+    while #view_order >= MAX_VIEW_SESSIONS do
+        S.view_forget(table.remove(view_order, 1))
+    end
+    view_order[#view_order + 1] = session
+end
+
+-- The settlement a key-driven request belongs to. The request carries a player
+-- id only, so the uuid comes from the online snapshot, and the screen is only
+-- opened when that uuid is a member of exactly one loaded settlement.
+S.view_player_uuid = function(player_id: number, players: any): string?
+    for index = 1, #players do
+        local player = players[index]
+        if player.player_id == player_id then return S.normalize_uuid(player.uuid or "") end
+    end
+    return nil
+end
+
+S.view_only_settlement = function(uuid: string): (any?, number)
+    local found: any = nil
+    local count = 0
+    for index = 1, #loaded_ids do
+        local record = settlements[loaded_ids[index]]
+        if record ~= nil and S.is_member(record, uuid) then
+            found = record
+            count = count + 1
+        end
+    end
+    return found, count
+end
+
+-- `name` is the identity, the dimension is the one every operation of this
+-- package uses, and the provenance is what adoption stored: the core site id,
+-- its variant and the site revision the settlement recorded.
+S.view_identity_fields = function(record: any): any
+    local gate, label = S.next_gate(record)
+    local needs = "no further growth gate for this branch"
+    if gate ~= nil then
+        local missing_requirements = S.missing_gate(record, gate)
+        if #missing_requirements == 0 then
+            needs = "all " .. tostring(label) .. " requirements met"
+        else
+            needs = "missing for " .. tostring(label) .. ": "
+                .. table.concat(missing_requirements, ", ")
+        end
+    end
+    return {
+        { id = "settlement", text = record.name },
+        { id = "site", text = record.site_id },
+        { id = "dimension", text = DIMENSION },
+        { id = "stage", text = record.stage .. " branch=" .. record.branch
+            .. " level=" .. tostring(record.branch_level) },
+        { id = "condition", text = record.condition },
+        { id = "provenance", text = "owner=" .. record.owner .. " variant=" .. record.variant
+            .. " site_revision=" .. tostring(record.site_revision) },
+        { id = "cycle", text = "pause=" .. record.pause .. " tick=" .. tostring(record.ticks)
+            .. " supply_tick=" .. tostring(record.supply_tick) },
+        { id = "needs", text = S.view_clamp(needs, VIEW_TEXT_BYTES) },
+    }
+end
+
+-- The four counters the panel declares, each the verified projection the
+-- settlement record holds, against the requirement of the next growth gate.
+-- A gate without that requirement shows 0, which is what it requires.
+S.view_supply_entries = function(record: any): any
+    local gate = S.next_gate(record)
+    local function requirement(field: string): number
+        if gate == nil then return 0 end
+        local wanted = gate[field]
+        if wanted == nil then return 0 end
+        return wanted
+    end
+    return {
+        { id = "residents", have = record.pop, need = requirement("pop") },
+        { id = "food", have = record.food, need = requirement("food") },
+        { id = "money", have = record.money, need = requirement("money") },
+        { id = "weapons", have = record.weapons, need = requirement("weapons") },
+    }
+end
+
+S.view_assignment = function(resident: any): string
+    local parts: { string } = {}
+    if resident.job ~= DONE then parts[#parts + 1] = resident.job end
+    parts[#parts + 1] = resident.service
+    if MILITARY_ROLES[resident.role] == true then parts[#parts + 1] = resident.role end
+    if resident.squad ~= DONE then parts[#parts + 1] = "squad=" .. resident.squad end
+    return table.concat(parts, " ")
+end
+
+-- One page of the overview: the roster slice for this cursor, or the warehouse
+-- stock page, which is always the last one. `page` and `page_count` must be
+-- exact integers, so the page count is integer arithmetic.
+S.view_model = function(session: any): any
+    local id = session.id
+    local record = settlements[id]
+    local index = resident_ids[id] or {}
+    local roster_pages = (#index + VIEW_PAGE_ROWS - 1) // VIEW_PAGE_ROWS
+    local page_count = roster_pages + 1
+    local page = session.page
+    if page < 0 then page = 0 end
+    if page > page_count - 1 then page = page_count - 1 end
+    session.page = page
+    local rows: any = {}
+    if page < roster_pages then
+        local first = page * VIEW_PAGE_ROWS + 1
+        local last = first + VIEW_PAGE_ROWS - 1
+        if last > #index then last = #index end
+        for position = first, last do
+            local resident = index[position]
+            rows[#rows + 1] = { cells = {
+                S.view_clamp(resident.name, VIEW_CELL_BYTES),
+                S.view_clamp(S.view_assignment(resident), VIEW_CELL_BYTES),
+                S.view_clamp("life=" .. tostring(resident.life) .. " family="
+                    .. tostring(resident.family) .. " gear=" .. tostring(resident.gear), VIEW_CELL_BYTES),
+            } }
+        end
+    elseif session.stock == nil then
+        -- No confirmed read yet: the row restates the exact reason instead of
+        -- standing in for stock the plugin never read.
+        rows[1] = { cells = {
+            "warehouse",
+            "0",
+            S.view_clamp(session.warehouse, VIEW_CELL_BYTES),
+        } }
+    else
+        local stock = session.stock
+        if #stock == 0 then
+            rows[1] = { cells = { "warehouse", "0", S.view_clamp(session.warehouse, VIEW_CELL_BYTES) } }
+        end
+        for position = 1, #stock do
+            local stack = stock[position]
+            rows[#rows + 1] = { cells = {
+                S.view_clamp(stack.resource_id, VIEW_CELL_BYTES),
+                tostring(stack.count),
+                "slot " .. tostring(stack.slot),
+            } }
+        end
+    end
+    local fields = S.view_identity_fields(record)
+    fields[#fields + 1] = { id = "warehouse", text = S.view_clamp(session.warehouse, VIEW_TEXT_BYTES) }
+    local next_enabled = page + 1 < page_count
+    local prev_enabled = page > 0
+    local refresh_enabled = session.reading ~= true
+    local actions: any = {
+        { action_id = VIEW_REFRESH, enabled = refresh_enabled, label = "Refresh overview" },
+        { action_id = VIEW_NEXT, enabled = next_enabled, label = "Next page" },
+        { action_id = VIEW_PREV, enabled = prev_enabled, label = "Previous page" },
+    }
+    if not refresh_enabled then
+        actions[1].deny_reason = "a warehouse read is already in flight"
+    end
+    if not next_enabled then
+        actions[2].deny_reason = "the last page is already shown"
+    end
+    if not prev_enabled then
+        actions[3].deny_reason = "the first page is already shown"
+    end
+    local model: any = {
+        page = page,
+        page_count = page_count,
+        rows = rows,
+        fields = fields,
+        actions = actions,
+        resource_entries = S.view_supply_entries(record),
+    }
+    if session.stock == nil then
+        model.reason = S.view_clamp("no warehouse contents: " .. session.warehouse, VIEW_TEXT_BYTES)
+    end
+    return model
+end
+
+-- Present the current page. A present before core reported the instance id has
+-- nowhere to go, so it is remembered and replayed once the id and the revision
+-- of the open arrive.
+S.view_present = function(session: any)
+    if session.instance == nil then
+        session.dirty = true
+        return
+    end
+    local record = settlements[session.id]
+    if record == nil then return end
+    session.dirty = false
+    solaris.present_client_view(
+        session.player_id, session.instance, session.revision, S.view_model(session))
+    -- Core accepts a present only at the revision it holds and answers with the
+    -- next one; the revision a later action reports is authoritative.
+    session.revision = session.revision + 1
+end
+
+S.view_failed = function(session: any, failure: string?)
+    session.stock = nil
+    session.reading = false
+    session.warehouse = "core refused the warehouse read (" .. tostring(failure or "refused") .. ")"
+    S.view_present(session)
+end
+
+-- Bind the settlement's own warehouse structure and read the bound container
+-- back. The authored container ordinal is this package's choice; the handle is
+-- minted by core and never guessed here.
+S.view_read_warehouse = function(session: any)
+    if session.reading then return end
+    session.reading = true
+    local id = session.id
+    local index = building_ids[id] or {}
+    local committed: any = nil
+    local pending: any = nil
+    for position = 1, #index do
+        local building = index[position]
+        if building.blueprint == "solaris:warehouse" then
+            if building.state == "committed" then
+                committed = building
+                break
+            end
+            pending = building
+        end
+    end
+    if committed == nil then
+        session.stock = nil
+        session.reading = false
+        if pending ~= nil then
+            session.warehouse = "warehouse " .. tostring(pending.name) .. " is "
+                .. tostring(pending.state) .. ", not committed"
+        else
+            session.warehouse = "no solaris:warehouse building in " .. id
+        end
+        S.view_present(session)
+        return
+    end
+    local building = records[S.building_key(id, committed.name)]
+    if building == nil then
+        if not S.read_key(S.building_key(id, committed.name), "load", {
+            id = id, key = S.building_key(id, committed.name), purpose = "overview-building",
+            building = committed.name, session = session,
+        }) then
+            session.stock = nil
+            session.reading = false
+            session.warehouse = "plugin is busy; refresh the overview"
+            S.view_present(session)
+        end
+        return
+    end
+    S.view_bind(session, building)
+end
+
+S.view_bind = function(session: any, building: any)
+    if building.structure_id == DONE then
+        session.stock = nil
+        session.reading = false
+        session.warehouse = "the committed warehouse stored no core structure id"
+        S.view_present(session)
+        return
+    end
+    if S.requests_pending() >= MAX_REQUESTS then
+        session.stock = nil
+        session.reading = false
+        session.warehouse = "plugin is busy; refresh the overview"
+        S.view_present(session)
+        return
+    end
+    local request = S.begin_request("view-bind", { id = session.id, view = session.request_id })
+    -- Core answers a repeated bind of the same authored container with the
+    -- original handle, and the id below names exactly that binding, so a retry
+    -- replays the receipt instead of conflicting with it.
+    solaris.bind_warehouse(
+        request.request_id,
+        "warehouse-" .. S.sanitize_id(session.id) .. "-" .. S.view_digest(building.structure_id),
+        building.structure_id,
+        0
+    )
+end
+
+S.view_query = function(session: any, handle: string)
+    if S.requests_pending() >= MAX_REQUESTS then
+        session.stock = nil
+        session.reading = false
+        session.warehouse = "plugin is busy; refresh the overview"
+        S.view_present(session)
+        return
+    end
+    local request = S.begin_request("view-stock", {
+        id = session.id, view = session.request_id, purpose = "overview",
+    })
+    solaris.query_owned_inventory(request.request_id, { kind = "warehouse", handle = handle }, nil)
+end
+
+-- Open the declared screen. The first model carries only state the plugin
+-- already holds, so the screen appears immediately; the warehouse read then
+-- presents the same page again with the confirmed contents.
+S.view_begin = function(player_id: number, uuid: string, id: string, page: number): boolean
+    local record = settlements[id]
+    if record == nil or not S.is_member(record, uuid) then return false end
+    if S.requests_pending() >= MAX_REQUESTS then return false end
+    local session: any = {
+        id = id,
+        uuid = uuid,
+        player_id = player_id,
+        page = page,
+        instance = nil,
+        revision = 0,
+        reading = false,
+        dirty = false,
+        stock = nil,
+        warehouse = "reading the bound warehouse",
+    }
+    local request = S.begin_request("view-open", { id = id, player_id = player_id })
+    session.request_id = request.request_id
+    session.open_entry = request
+    view_opens[session.request_id] = session
+    S.view_remember(session)
+    solaris.open_client_view(session.request_id, player_id, VIEW_ID, S.view_model(session))
+    S.view_read_warehouse(session)
+    return true
+end
+
+S.view_open_for = function(player_id: number, players: any)
+    local uuid = S.view_player_uuid(player_id, players)
+    if uuid == nil then
+        S.message(player_id, "Your player identity is unavailable; retry the settlement screen.")
+        return
+    end
+    local record, count = S.view_only_settlement(uuid)
+    if record == nil then
+        if count > 1 then
+            S.message(player_id, "You belong to several settlements; use /settlement overview <name>.")
+        else
+            S.message(player_id, "You are not a member of any loaded settlement.")
+        end
+        return
+    end
+    S.view_begin(player_id, uuid, record.name, 0)
+end
+
+function on_loader_view_request(event: any)
+    if event.request_kind ~= "settlement" then return end
+    local player_id = event.player_id
+    if not boot_done then
+        S.message(player_id, "Settlements are still loading.")
+        return
+    end
+    if S.requests_pending() >= MAX_REQUESTS then
+        S.message(player_id, "Plugin is busy; reopen the settlement screen.")
+        return
+    end
+    local entry = S.begin_request("view-request", { player_id = player_id })
+    solaris.list_online_players(entry.request_id, 32)
+end
+
+function on_loader_view_action(event: any)
+    local session: any = view_sessions[event.view_instance_id]
+    if session == nil then return end
+    -- The client reports the revision it displays, which is the only
+    -- authoritative revision this plugin sees after an open.
+    session.revision = event.view_revision
+    if event.player_id ~= session.player_id then return end
+    if settlements[session.id] == nil then return end
+    local action = event.action_id
+    if action == VIEW_REFRESH then
+        -- The model denies this action while a read is in flight; a client that
+        -- sends it anyway is answered with the current page, never silently.
+        if session.reading then
+            S.view_present(session)
+            return
+        end
+        S.view_read_warehouse(session)
+        return
+    end
+    if action == VIEW_NEXT or action == VIEW_PREV then
+        if action == VIEW_NEXT then
+            session.page = session.page + 1
+        else
+            session.page = session.page - 1
+        end
+        S.view_present(session)
+    end
+end
+
+function on_client_view_opened(event: any)
+    local session: any = view_opens[event.request_id]
+    if session == nil then return end
+    if not event.opened then
+        S.view_forget(session)
+        S.message(event.player_id, "Settlement overview refused: "
+            .. tostring(event.failure or "refused") .. ".")
+        return
+    end
+    session.instance = event.view_instance_id
+    session.revision = event.revision
+    view_sessions[session.instance] = session
+    S.finish_request(session.open_entry)
+    if session.dirty then S.view_present(session) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -5969,8 +6531,12 @@ function on_command_batch_rejected(_result: any)
     -- The whole batch was rejected before any effect: drop the in-flight
     -- bookkeeping. Durable intents stay in storage and are resolved by
     -- operation_status on the next startup; this callback must not emit a
-    -- command.
+    -- command. No read can still be in flight, so every live screen becomes
+    -- refreshable again and keeps the page it last presented.
     requests = {}
+    for position = 1, #view_order do
+        view_order[position].reading = false
+    end
 end
 
 return nil

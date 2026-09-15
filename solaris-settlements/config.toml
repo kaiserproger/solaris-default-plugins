@@ -32,6 +32,6 @@ food_items = [
 ]
 
 # Items that count as a verified treasury amount. The plugin never mints money;
-# a deposit needs a writable settlement container endpoint, which does not exist
-# in API 0.6.0 yet.
+# a deposit needs a transfer into the settlement's bound warehouse container,
+# which this package does not implement yet.
 money_items = ["minecraft:emerald", "minecraft:gold_ingot"]

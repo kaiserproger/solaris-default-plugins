@@ -24,3 +24,16 @@ required_features = [
   "structure_operations",
 ]
 player_commands = ["settlement"]
+
+[client]
+schema = 2
+
+[[client.bundles]]
+id = "settlements-ui"
+version = "1.0.0"
+artifact = "client/settlements-ui.zip"
+sha256 = "985a8386382e37b032533c59b4080843bfe948dc810d2c317106226aefc305a3"
+size_bytes = 2116
+loaders = ["fabric", "neoforge", "forge"]
+content = ["views", "view_actions"]
+permissions = ["present_views", "send_view_actions"]

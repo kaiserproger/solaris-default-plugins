@@ -1,15 +1,32 @@
-# Solaris Settlements (v1, server-side)
+# Solaris Settlements (v1)
 
 The single settlement/profile package for API `0.6.0`: one owner of settlement
 records, growth, economy accounting, population, recruitment records, squads and
 the authored blueprint catalog. It replaces `colony-villager-scaffold` and
 `settlement-prototype`; a deployed set must hold exactly one settlement profile.
 
-**Server-only.** The manifest declares no `[client]` bundle, no Loader
-permission and no worldgen selector, so a vanilla client can run
-`/settlement`. Everything Loader-dependent (client views, world preview, entity
-presentation, keybinds) is deliberately absent from v1 and remains frozen in
-the Loader repository for a later client wave.
+**Server data plus verified client content.** The manifest declares one `[client]`
+bundle (`client/settlements-ui.zip`, schema 2) with `views`/`view_actions`
+content and the `present_views`/`send_view_actions` permissions. It declares one
+`settlement` screen, `solaris-settlements:overview`, which the plugin opens for a
+member from the client's settlement key or from `/settlement overview [name]`.
+The screen shows only what this package actually holds or reads: the settlement
+identity, the resident roster, the cycle's stop reason and the confirmed
+contents of the warehouse container core bound for the package. Without a Loader
+that activates the bundle the plugin still runs and `/settlement` still works;
+only the screen is missing. World previews, entity presentation and keybinds
+remain absent from v1 and frozen in the Loader repository.
+
+## Full overhaul specification
+
+The proposed client + server X–XV-century overhaul is specified in
+[gameplay and campaign design](../docs/settlements/SPECIFICATION.md),
+[equipment and production content](../docs/settlements/CONTENT_SPEC.md), and
+[implementation contracts and acceptance](../docs/settlements/IMPLEMENTATION_SPEC.md).
+These documents extend the earlier upstream contract; they do not claim the
+server-only package below already implements the full overhaul. Specification
+files live outside this deployable package so installation does not copy them
+as runtime content.
 
 ## Contents
 
@@ -17,7 +34,11 @@ the Loader repository for a later client wave.
   `storage_batches`, `inventory_transfers`, `persistent_residents`,
   `resident_work`, `resident_orders`, `world_sites`, `structure_operations`,
   `player_queries` (with the matching `required_features`), command root
-  `settlement`.
+  `settlement`, and one schema-2 `[client]` bundle whose `sha256`/`size_bytes`
+  are the shipped bytes of `client/settlements-ui.zip`.
+- `client/settlements-ui.zip` — deterministic Loader artifact: index schema 2
+  first, one `settlement` screen with a `paged_table`, a `resource_panel` and
+  `refresh`/`page_next`/`page_prev` action buttons.
 - `config.toml` — operator configuration: dimension, bounded maximums, cycle
   cadence, food and money item ids.
 - `structures/*.toml` — 22 authored blueprints (schema 1 from the frozen
@@ -39,7 +60,7 @@ fund <name> <building> | build <name> <building> | pause|cancel <name> <building
 buildings <name> | promote <name> | branch <name> <estate|fortress|town>
 specialize <name> [spec [spec]] | ruin|restore <name>
 populate <name> | claim <name> <entity_uuid> | residents <name>
-family <name> <resident> <family> | job <name> <resident> <job|none>
+overview [name] | family <name> <resident> <family> | job <name> <resident> <job|none>
 hire <name> <resident> <militia|infantry|spearman|archer> | dismiss <name> <resident>
 squad <name> create|add|order|cancel|list ... | supply <name> | deposit <name>
 role <name> <uuid> <steward|captain|member>
@@ -86,9 +107,12 @@ approved guard posts; `cancel` maps to `cancel_resident_order`.
 
 ## Not implemented in v1 (reported, never faked)
 
-- A writable `warehouse` inventory endpoint (core C1): no settlement store can
-  hold goods yet, so `deposit` refuses, `haul` moves between the resident's own
-  canonical endpoints, and soldier gear returns to a reachable player inventory.
+- A deposit *transfer* into the settlement warehouse: the core `warehouse`
+  inventory endpoint exists and this package binds the committed
+  `solaris:warehouse` structure and reads its container for the overview, but no
+  command moves an item into it yet, so `deposit` refuses, `haul` moves between
+  the resident's own canonical endpoints, and soldier gear returns to a
+  reachable player inventory.
 - Package `structures/*.toml` discovery and the `feudal_settlements` selector
   (core C2 wiring): until the core runtime catalog is installed every
   settlement/structure call answers `runtime_unavailable` and the plugin says so
