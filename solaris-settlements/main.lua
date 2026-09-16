@@ -165,16 +165,25 @@ local ROLE_KIT: any = {
     },
 }
 
+-- The committed workplace a settlement stores stock in: a hauling worker
+-- delivers into it and an issued work order takes items out of it, so both name
+-- the same blueprint.
+local WAREHOUSE_BLUEPRINT = "solaris:warehouse"
+
 -- One physical work order per civilian job, bound to the committed workplace
 -- the settlement already owns. `units` is the bounded work budget of one call.
+-- `tool` names a real item, never a category: core matches the worker's own
+-- canonical equipment by resource id, so `minecraft:hoe` would match nothing and
+-- the job would pause as `missing_tool` forever. Nothing here hands the worker a
+-- free tool; the settlement must really hold the named item.
 local JOB_WORK: any = {
-    farming = { kind = "harvest", shop = "solaris:farm", tool = "minecraft:hoe", units = 64, y_min = -1, y_max = 2 },
-    forestry = { kind = "cut_tree", shop = "solaris:sawmill", tool = "minecraft:axe", units = 64, y_min = 0, y_max = 15 },
-    mining = { kind = "mine", shop = "solaris:mine_entrance", tool = "minecraft:pickaxe", units = 64, y_min = -12, y_max = 3 },
+    farming = { kind = "harvest", shop = "solaris:farm", tool = "minecraft:iron_hoe", units = 64, y_min = -1, y_max = 2 },
+    forestry = { kind = "cut_tree", shop = "solaris:sawmill", tool = "minecraft:iron_axe", units = 64, y_min = 0, y_max = 15 },
+    mining = { kind = "mine", shop = "solaris:mine_entrance", tool = "minecraft:iron_pickaxe", units = 64, y_min = -12, y_max = 3 },
     fishing = { kind = "fish", shop = "solaris:fishing_pier", tool = "minecraft:fishing_rod", units = 32, y_min = -2, y_max = 1 },
     ranching = { kind = "tend_livestock", shop = "solaris:pen", feed = "minecraft:wheat", units = 16, y_min = -1, y_max = 2 },
     construction = { kind = "construct", units = 256 },
-    hauling = { kind = "haul", units = 64 },
+    hauling = { kind = "haul", shop = WAREHOUSE_BLUEPRINT, units = 64 },
     crafting = { kind = "craft", recipe = "minecraft:stick", units = 4 },
 }
 
@@ -1952,7 +1961,8 @@ local COMMAND_HELP = table.concat({
     "populate <name> | claim <name> <entity_uuid> | residents <name>",
     "overview [name] | family <name> <resident> <family> | job <name> <resident> <job|none>",
     "hire <name> <resident> <militia|infantry|spearman|archer> | dismiss <name> <resident>",
-    "squad <name> create|add|order|cancel|list ... | supply <name> | deposit <name>",
+    "squad <name> create|add|order|cancel|list ... | supply <name>",
+    "issue <name> <resident> <item> <count> [equipment|carry]",
     "role <name> <uuid> <steward|captain|member>",
 }, "\n")
 
@@ -2406,17 +2416,49 @@ S.command_supply = function(event: any, uuid: string, words: { string })
     solaris.query_owned_inventory(entry.request_id, { kind = "player_inventory", player_id = event.player_id }, nil)
 end
 
-S.command_deposit = function(event: any, uuid: string, words: { string })
+-- The batch an issue command may ask for in one call. Core bounds one work
+-- order at MAX_WORK_UNITS (4096) and refuses more, so the package states the
+-- bound instead of letting a typo become a rejected assignment.
+local ISSUE_UNITS_MAX = 4096
+local ISSUE_ENDPOINTS: { [string]: boolean } = { equipment = true, carry = true }
+
+-- /settlement issue <name> <resident> <item> <count> [equipment|carry]
+--
+-- Issue real settlement stock out of the committed warehouse container into one
+-- worker's own equipped or carried slots. The item is named by the caller: a
+-- worker that needs a hoe must not receive whatever storage holds first.
+S.command_issue = function(event: any, uuid: string, words: { string })
     local record = settlements[words[2]]
     if record == nil then
         S.usage(event.player_id, "Settlement not found.")
         return
     end
     if not S.can_build(record, uuid) then
-        S.usage(event.player_id, "Only the owner or a steward deposits.")
+        S.usage(event.player_id, "Only the owner or a steward issues stock.")
         return
     end
-    S.usage(event.player_id, "Deposits are not implemented: this package only reads the bound warehouse container, so nothing was deposited and no money was created.")
+    local item = words[4]
+    if item == nil or not S.resource_id(item) then
+        S.usage(event.player_id, "Name the item with its namespace, for example minecraft:iron_hoe.")
+        return
+    end
+    local count = tonumber(words[5])
+    if count == nil or count ~= math.floor(count) or count < 1 or count > ISSUE_UNITS_MAX then
+        S.usage(event.player_id, "Count must be a whole number from 1 to " .. ISSUE_UNITS_MAX .. ".")
+        return
+    end
+    local endpoint = string.lower(words[6] or "equipment")
+    if ISSUE_ENDPOINTS[endpoint] ~= true then
+        S.usage(event.player_id, "Issue into equipment or carry.")
+        return
+    end
+    -- The durable resident record is the authority on its core handle, so it is
+    -- read back before anything is bound or assigned - exactly like the hire
+    -- and dismiss commands that act on one resident.
+    S.read_key(S.resident_key(record.name, words[3] or DONE), "issue-resident", {
+        id = record.name, resident = words[3], actor = event.player_id,
+        item = item, count = count, endpoint = endpoint,
+    })
 end
 
 -- ---------------------------------------------------------------------------
@@ -3107,8 +3149,8 @@ S.dispatch_command = function(event: any)
         S.command_overview(event, uuid, words)
     elseif action == "supply" and #words == 2 then
         S.command_supply(event, uuid, words)
-    elseif action == "deposit" and #words == 2 then
-        S.command_deposit(event, uuid, words)
+    elseif action == "issue" and #words >= 5 and #words <= 6 then
+        S.command_issue(event, uuid, words)
     elseif action == "ruin" and #words == 2 then
         S.command_condition(event, uuid, words, true)
     elseif action == "restore" and #words == 2 then
@@ -3729,7 +3771,7 @@ S.work_area = function(building: any, spec: any): any
     }
 end
 
-S.work_order_of = function(job: string, building: any, plan: any, handle: string): any?
+S.work_order_of = function(job: string, building: any, plan: any, handle: string, warehouse: string?): any?
     local spec = JOB_WORK[job]
     if spec == nil then return nil end
     if spec.kind == "harvest" then
@@ -3757,13 +3799,16 @@ S.work_order_of = function(job: string, building: any, plan: any, handle: string
         }
     end
     if spec.kind == "haul" then
-        if handle == DONE then return nil end
-        -- No writable settlement store exists yet, so the only real bounded
-        -- move is between the resident's own canonical endpoints.
+        if handle == DONE or warehouse == nil then return nil end
+        -- The other half of a haul is the settlement's own bound warehouse
+        -- container, resolved by core from the handle it minted at bind time.
+        -- Core commits the worker's canonical record and the container contents
+        -- as one durable decision; a container that cannot take the cargo
+        -- leaves every item with the worker.
         return {
             kind = "haul",
             source = { kind = "resident_carry", handle = handle },
-            destination = { kind = "resident_equipment", handle = handle },
+            destination = { kind = "warehouse", handle = warehouse },
         }
     end
     if spec.kind == "craft" then
@@ -3835,6 +3880,21 @@ S.start_job = function(id: string, resident: any, job: string, actor: number)
         })
         return
     end
+    -- A haul's destination is the settlement's bound warehouse container, so
+    -- the binding is resolved before the work order is built. The handle is
+    -- minted by core and is never guessed here; binding does not change the
+    -- worker's cargo, so a refused bind simply assigns nothing.
+    if spec ~= nil and spec.kind == "haul" then
+        if building == nil or building.structure_id == DONE then
+            S.message(actor, "That warehouse has no core structure id, so no container can be bound.")
+            return
+        end
+        S.bind_warehouse(S.begin_request("bind", {
+            id = id, resident = resident.name, handle = resident.handle, job = job,
+            building = building.name, actor = actor, purpose = "haul-bind",
+        }), building.structure_id)
+        return
+    end
     local entry = S.begin_request("inv_query", {
         id = id, resident = resident.name, handle = resident.handle, job = job,
         building = building ~= nil and building.name or DONE, actor = actor, purpose = "work-revision",
@@ -3859,12 +3919,126 @@ S.issue_work_intent = function(entry: any, revision: number)
     if not S.write_settlement_bundle(id, record, {}, "work-intent", {
         kind = "work-intent", id = id, resident = resident.name, job = entry.job,
         building = entry.building or DONE, core_revision = revision,
-        actor = entry.actor, operation_id = op,
+        actor = entry.actor, operation_id = op, warehouse = entry.warehouse,
     }) then
         S.clear_pending(id, "resident:" .. resident.name)
         S.message(entry.actor, "Plugin is busy; retry.")
         S.finish_request(entry)
     end
+end
+
+-- Pick the committed warehouse one issue command takes stock out of, and bind
+-- its container before any work order can name it. A warehouse without a core
+-- structure id has no container to bind, and an uncommitted settlement has no
+-- warehouse at all.
+S.start_issue = function(id: string, resident: any, item: string, count: number, endpoint: string, actor: number)
+    -- The same guards every resident-targeting command applies: stock leaves the
+    -- settlement for one worker and nothing can take it back out of a dead or
+    -- handleless one, so the order is refused before a container is even bound.
+    if resident.life ~= "alive_loaded" and resident.life ~= "alive_unloaded" then
+        S.message(actor, "That resident is not alive; cannot issue stock.")
+        return
+    end
+    if resident.handle == DONE then
+        S.message(actor, "That resident has no core handle; claim or populate it first.")
+        return
+    end
+    local index_entry = S.committed_building(id, WAREHOUSE_BLUEPRINT)
+    if index_entry == nil then
+        S.message(actor, "No committed warehouse: build one before issuing stock.")
+        return
+    end
+    local building = records[S.building_key(id, index_entry.name)]
+    if building == nil then
+        S.read_key(S.building_key(id, index_entry.name), "load", {
+            id = id, key = S.building_key(id, index_entry.name), purpose = "issue-building",
+            resident = resident.name, item = item, count = count, endpoint = endpoint, actor = actor,
+        })
+        return
+    end
+    S.issue_bind(id, resident, building, item, count, endpoint, actor)
+end
+
+S.issue_bind = function(id: string, resident: any, building: any, item: string, count: number, endpoint: string, actor: number)
+    if building.structure_id == DONE then
+        S.message(actor, "That warehouse has no core structure id, so no container can be bound.")
+        return
+    end
+    -- The bind is the same durable bind a hauling worker uses, so both halves of
+    -- the haul resolve the container core minted the handle for. A refused bind
+    -- assigns nothing: no work order is ever sent with a guessed handle.
+    S.bind_warehouse(S.begin_request("bind", {
+        id = id, resident = resident.name, handle = resident.handle, building = building.name,
+        actor = actor, item = item, count = count, endpoint = endpoint, purpose = "issue-bind",
+    }), building.structure_id)
+end
+
+-- The durable assignment one issue command parks: the operation id is fixed
+-- before the call, so a restart recovers the committed receipt instead of
+-- issuing the stock twice.
+S.issue_stock_intent = function(entry: any, revision: number)
+    local id = entry.id
+    local resident = records[S.resident_key(id, entry.resident)]
+    local record = settlements[id]
+    if resident == nil or record == nil then
+        S.finish_request(entry)
+        return
+    end
+    local op = S.operation_id(id, "issue")
+    if S.set_pending(id, "resident:" .. resident.name, op, "work", entry.actor, "hauling") == nil then
+        S.finish_request(entry)
+        S.message(entry.actor, "Too many pending operations; resolve them first.")
+        return
+    end
+    if not S.write_settlement_bundle(id, record, {}, "issue-intent", {
+        kind = "issue-intent", id = id, resident = resident.name, building = entry.building or DONE,
+        core_revision = revision, actor = entry.actor, operation_id = op, warehouse = entry.warehouse,
+        item = entry.item, count = entry.count, endpoint = entry.endpoint, job = "hauling",
+    }) then
+        S.clear_pending(id, "resident:" .. resident.name)
+        S.message(entry.actor, "Plugin is busy; retry.")
+        S.finish_request(entry)
+    end
+end
+
+S.issue_stock_call = function(entry: any)
+    local id = entry.id
+    local resident = records[S.resident_key(id, entry.resident)]
+    if resident == nil or resident.handle == DONE then
+        S.finish_request(entry)
+        S.clear_pending(id, "resident:" .. tostring(entry.resident))
+        return
+    end
+    if entry.warehouse == nil or entry.warehouse == DONE then
+        S.clear_pending(id, "resident:" .. resident.name)
+        S.message(entry.actor, "No warehouse container is bound; nothing was issued.")
+        S.finish_request(entry)
+        return
+    end
+    -- The assignment result is applied by the shared work-result path, which
+    -- records `entry.job` as the worker's current job. An issue is a hauling
+    -- order, so it says so instead of letting the label fall through to DONE.
+    entry.job = "hauling"
+    local destination = entry.endpoint == "carry"
+        and { kind = "resident_carry", handle = resident.handle }
+        or { kind = "resident_equipment", handle = resident.handle }
+    entry.kind = "work"
+    -- The source is the container this command bound; the destination is the
+    -- worker's own endpoint, and the item names what core must take out of the
+    -- container instead of whatever sits in its first slot.
+    solaris.assign_resident_work(
+        entry.request_id,
+        entry.operation_id,
+        resident.handle,
+        {
+            kind = "haul",
+            source = { kind = "warehouse", handle = entry.warehouse },
+            destination = destination,
+            item = entry.item,
+        },
+        entry.count,
+        entry.core_revision
+    )
 end
 
 S.issue_work_call = function(entry: any)
@@ -3885,7 +4059,7 @@ S.issue_work_call = function(entry: any)
         building = S.ensure_building(id, entry.building)
     end
     local plan = building ~= nil and records[S.plan_key(id, building.name)] or nil
-    local work = S.work_order_of(entry.job, building, plan, resident.handle)
+    local work = S.work_order_of(entry.job, building, plan, resident.handle, entry.warehouse)
     if work == nil then
         S.clear_pending(id, "resident:" .. resident.name)
         S.message(entry.actor, "That job has no valid bounded target yet; nothing was assigned.")
@@ -4593,6 +4767,28 @@ S.handle_value_read = function(entry: any, value: any)
         S.start_job(id, resident, entry.job, entry.actor)
         return
     end
+    if purpose == "issue-resident" then
+        local resident = S.read_resident(value)
+        if resident == nil then
+            S.message(entry.actor, "Unknown resident.")
+            return
+        end
+        records[S.resident_key(id, resident.name)] = resident
+        S.start_issue(id, resident, entry.item, entry.count, entry.endpoint, entry.actor)
+        return
+    end
+    if purpose == "issue-building" then
+        local building = S.read_building(value)
+        if building == nil then
+            S.message(entry.actor, "No construction record for that warehouse.")
+            return
+        end
+        records[S.building_key(id, building.name)] = building
+        local resident = records[S.resident_key(id, entry.resident)]
+        if resident == nil then return end
+        S.issue_bind(id, resident, building, entry.item, entry.count, entry.endpoint, entry.actor)
+        return
+    end
     if purpose == "job-building" then
         local building = S.read_building(value)
         if building == nil then
@@ -4971,12 +5167,41 @@ end
 S.handle_settlement_result = function(entry: any, result: any)
     local kind = result.kind
     if kind == "warehouse" then
+        local binding = result.binding
+        if entry.purpose == "issue-bind" then
+            -- The bind committed: the handle core minted is carried into the
+            -- withdrawal order, and the chain continues as an inventory query so
+            -- a refused endpoint read reports its own reason instead of the
+            -- bind's.
+            entry.kind = "inv_query"
+            entry.purpose = "issue-revision"
+            entry.warehouse = binding.handle
+            solaris.query_owned_inventory(
+                entry.request_id,
+                entry.endpoint == "carry"
+                    and { kind = "resident_carry", handle = entry.handle }
+                    or { kind = "resident_equipment", handle = entry.handle },
+                nil
+            )
+            return
+        end
+        if entry.purpose == "haul-bind" then
+            -- The bind committed: the handle core minted is carried into the
+            -- work order, and the chain continues as an inventory query so a
+            -- refused equipment read reports its own reason instead of the
+            -- bind's.
+            entry.kind = "inv_query"
+            entry.purpose = "work-revision"
+            entry.warehouse = binding.handle
+            solaris.query_owned_inventory(
+                entry.request_id, { kind = "resident_equipment", handle = entry.handle }, nil)
+            return
+        end
         -- Core answered the bind with the handle it minted for the authored
         -- container; the overview reads exactly that handle back.
         S.finish_request(entry)
         local session: any = view_opens[entry.view]
         if session == nil then return end
-        local binding = result.binding
         session.structure = binding.structure_id
         session.container = binding.container_id
         S.view_query(session, binding.handle)
@@ -5535,6 +5760,10 @@ S.handle_inventory_result = function(entry: any, result: any)
             S.issue_work_intent(entry, snapshot.fence.revision)
             return
         end
+        if entry.purpose == "issue-revision" then
+            S.issue_stock_intent(entry, snapshot.fence.revision)
+            return
+        end
         if entry.purpose == "dismiss-revision" then
             S.issue_dismiss_intent(entry, snapshot.fence.revision)
             return
@@ -5787,6 +6016,9 @@ S.continue_write = function(entry: any, event: any)
     elseif purpose == "work-intent" then
         S.issue_work_call(entry)
         return
+    elseif purpose == "issue-intent" then
+        S.issue_stock_call(entry)
+        return
     elseif purpose == "dismiss-intent" then
         S.issue_dismiss_call(entry)
         return
@@ -5891,6 +6123,14 @@ function on_operation_result(event: any)
             if entry.kind == "reserve_poi" then S.clear_pending(entry.id, "resident-site", entry.operation_id) end
             S.finish_request(entry)
             S.refuse(entry, event, nil)
+            return
+        end
+        if entry.kind == "bind" then
+            -- No container was bound, so no work order can name a destination:
+            -- the assignment is abandoned rather than sent with a guess.
+            S.finish_request(entry)
+            S.message(entry.actor, "No warehouse container is bound: core refused the bind ("
+                .. tostring(event.failure or event.state) .. "); nothing was assigned.")
             return
         end
         S.refuse(entry, event, nil)
@@ -6096,6 +6336,20 @@ S.view_digest = function(value: string): string
         hash = (hash - digit) / 10
     until hash == 0
     return text
+end
+
+-- Bind the settlement's own authored warehouse container and let core mint its
+-- handle: the ordinal is this package's choice, the handle never is. One
+-- deterministic operation id per settlement and structure means a repeated bind
+-- replays the original handle and revision instead of conflicting, so both the
+-- overview and a hauling work order resolve the same container.
+S.bind_warehouse = function(entry: any, structure_id: string)
+    solaris.bind_warehouse(
+        entry.request_id,
+        "warehouse-" .. S.sanitize_id(entry.id) .. "-" .. S.view_digest(structure_id),
+        structure_id,
+        0
+    )
 end
 
 S.view_forget = function(session: any)
@@ -6367,15 +6621,7 @@ S.view_bind = function(session: any, building: any)
         return
     end
     local request = S.begin_request("view-bind", { id = session.id, view = session.request_id })
-    -- Core answers a repeated bind of the same authored container with the
-    -- original handle, and the id below names exactly that binding, so a retry
-    -- replays the receipt instead of conflicting with it.
-    solaris.bind_warehouse(
-        request.request_id,
-        "warehouse-" .. S.sanitize_id(session.id) .. "-" .. S.view_digest(building.structure_id),
-        building.structure_id,
-        0
-    )
+    S.bind_warehouse(request, building.structure_id)
 end
 
 S.view_query = function(session: any, handle: string)

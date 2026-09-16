@@ -62,7 +62,8 @@ specialize <name> [spec [spec]] | ruin|restore <name>
 populate <name> | claim <name> <entity_uuid> | residents <name>
 overview [name] | family <name> <resident> <family> | job <name> <resident> <job|none>
 hire <name> <resident> <militia|infantry|spearman|archer> | dismiss <name> <resident>
-squad <name> create|add|order|cancel|list ... | supply <name> | deposit <name>
+squad <name> create|add|order|cancel|list ... | supply <name>
+issue <name> <resident> <item> <count> [equipment|carry]
 role <name> <uuid> <steward|captain|member>
 ```
 
@@ -71,6 +72,29 @@ role <name> <uuid> <steward|captain|member>
 committed units, item deltas, and the typed stop reason (`missing_input`,
 `missing_tool`, `blocked_route`, `unloaded`, `no_workers`, `interrupted`,
 `protected`, `unsupported`, `no_storage`); `none` cancels the assignment.
+
+Every job names real things. `farming`/`forestry`/`mining` require the worker to
+hold `minecraft:iron_hoe`/`minecraft:iron_axe`/`minecraft:iron_pickaxe` and
+`ranching` requires `minecraft:wheat` in its own canonical slots — nothing hands
+the worker a free tool, so a job without the item pauses as `missing_tool`.
+`hauling` first binds the committed `solaris:warehouse` container through
+`solaris.bind_warehouse` (the handle is core-minted and never guessed here), then
+assigns a `haul` whose destination is that bound container: core moves the
+worker's carry into it in one durable decision with the worker's canonical record
+change, and a container that cannot take the cargo leaves every item with the
+worker and reports `no_storage`. A refused bind assigns nothing and says so.
+
+`issue` is the same haul in the other direction and takes real stock out of the
+same bound container: `<item>` names the resource core must take, so a worker
+that needs a hoe is not handed whatever the container holds first, `<count>` is
+the batch asked for (1–4096 units, never more than one work order), and the
+optional endpoint decides whether the issued items land in the worker's core
+equipment (the default) or its carry. The command binds the committed
+`solaris:warehouse` container through the same `solaris.bind_warehouse` call, so
+both directions resolve the one handle core minted. An item the container does
+not hold pauses the work as `missing_input`, a worker with no room for it pauses
+as `interrupted`, an unresolvable container pauses as `no_storage`, and a
+refused bind assigns nothing and says so.
 
 `hire` draws the role's kit from the employer's real inventory and moves it into
 the resident's core equipment/carry slots through `transfer_owned_items`; the
@@ -107,12 +131,9 @@ approved guard posts; `cancel` maps to `cancel_resident_order`.
 
 ## Not implemented in v1 (reported, never faked)
 
-- A deposit *transfer* into the settlement warehouse: the core `warehouse`
-  inventory endpoint exists and this package binds the committed
-  `solaris:warehouse` structure and reads its container for the overview, but no
-  command moves an item into it yet, so `deposit` refuses, `haul` moves between
-  the resident's own canonical endpoints, and soldier gear returns to a
-  reachable player inventory.
+- A `deposit` *command*: a worker's `hauling` job really fills the bound
+  warehouse container, but no player command moves an item into that container
+  yet, so the only player-driven transfer is `issue` (warehouse → worker).
 - Package `structures/*.toml` discovery and the `feudal_settlements` selector
   (core C2 wiring): until the core runtime catalog is installed every
   settlement/structure call answers `runtime_unavailable` and the plugin says so
