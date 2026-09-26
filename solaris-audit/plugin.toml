@@ -1,7 +1,8 @@
 id = "solaris-audit"
 name = "Solaris Audit"
 version = "0.1.0"
-api = "0.6.0"
+api = "0.7.0"
+entry = "plugin.wasm"
 events = ["server.started", "server.tick", "player.block_broken", "player.block_placed", "player.item_crafted", "player.item_picked_up", "player.entity_killed", "player.entity_interacted", "player.died"]
 capabilities = ["storage"]
 player_commands = ["audit"]

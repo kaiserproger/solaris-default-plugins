@@ -1,8 +1,9 @@
 # Solaris Default Plugins
 
-First-party Luau plugin packages for the Solaris server
-(`../solaris` core repo). Each subdirectory is one independent deployable
-package: `plugin.toml` + `main.lua`, with an optional `config.toml`.
+First-party plugin source for the Solaris server (`../solaris` core repo).
+The standard pack and `solaris-settlements` are API 0.7 WebAssembly component
+packages: each deployed directory has `plugin.toml` + `plugin.wasm`, with an
+optional `config.toml`.
 
 ## Packages
 
@@ -12,20 +13,23 @@ towns, audit) — see `standard-pack/README.md` for scope and omissions:
 - `solaris-permissions`, `solaris-essentials`, `solaris-economy`,
   `solaris-towns`, `solaris-audit`
 
-Demonstrations and worldgen selectors:
+Legacy examples and worldgen selectors:
 
 - `basic-economy`, `land-claims`, `online-roster`, `geological-mines`,
-  `currency-catalog` (fixture)
-- `solaris-settlements` — the single settlement package (server-side,
+  `currency-catalog` (fixture). They remain source/reference material until
+  each is migrated to an API 0.7 component; `install.sh` does not deploy them.
+
+- `solaris-settlements` — the single settlement component (server-side,
   `structures/*.toml` authored blueprints, no Loader requirement). Installed
   explicitly; a deployed set holds at most one settlement profile. It replaces
-  the removed `colony-villager-scaffold` and `settlement-prototype` packages,
-  and the core settlement selector must name it (`feudal_settlements`) once the
-  core catalog loader lands.
+  the removed `colony-villager-scaffold` and `settlement-prototype` packages.
 
 ## Repository layout
 
-- `<package>/` — one deployed plugin package each (see the list above).
+- `<package>/` — an API 0.7 deployable component package (the standard pack and
+  `solaris-settlements`).
+- `sources/` — Rust source workspaces for component packages; source never
+  enters a deployed package directory.
 - `standard-pack/` — docs only; the deployed behaviour lives in the five member
   packages.
 - `tools/` — repository tools (`gen_structures.py` generates and verifies the
@@ -99,26 +103,29 @@ expected = [
 ]
 ```
 
-`solaris-settlements` is server-only: it declares no client bundle and no
-Loader capability, so a vanilla client can run `/settlement`. It is the only
-settlement profile in the set — the removed `settlement-prototype` and
+`solaris-settlements` commands work with a vanilla client. Its optional
+Loader view bundle does not change the server's command authority. It is the
+only settlement profile in the set — the removed `settlement-prototype` and
 `colony-villager-scaffold` packages must not be deployed beside it.
 
-## Lua API contract
+## Component API contract
 
-- Target API is `0.6.0` (`api = "0.6.0"` in every `plugin.toml`).
-- Server-only unless the manifest says otherwise; commands work with a
-  vanilla client.
-- Manifest capabilities/events must cover everything `main.lua` uses;
-  strict mode rejects malformed packages and stray files.
-- `config.toml` (where present) is validated at load; see each package
-  README and `docs/PLUGINS.md` in the core repo for the full contract.
+- API 0.7 applies to the deployed standard pack and `solaris-settlements`;
+  legacy examples above still use their historical manifests and are not
+  installation targets.
+- Server-only unless the manifest says otherwise; commands work with a vanilla
+  client.
+- Manifest capabilities/events must cover everything `plugin.wasm` uses; strict
+  mode rejects malformed packages and stray files.
+- `config.toml` (where present) is validated at load; see each package README
+  and `docs/PLUGINS.md` in the core repo for the full contract.
 
 ## Layout
 
-```
+```text
 solaris-default-plugins/
-  <package>/  plugin.toml, main.lua, [config.toml,] README.md
+  <package>/  plugin.toml, plugin.wasm, [config.toml,] README.md
+  sources/    Rust component source workspaces
   standard-pack/  pack README (no code; lists the five pack members)
 ```
 

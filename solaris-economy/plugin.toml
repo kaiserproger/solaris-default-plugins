@@ -1,7 +1,9 @@
 id = "solaris-economy"
 name = "Solaris Economy"
 version = "0.1.0"
-api = "0.6.0"
+api = "0.7.0"
+entry = "plugin.wasm"
 events = ["server.started"]
-capabilities = ["storage"]
+capabilities = ["storage", "storage_batches"]
+required_features = ["storage_batches"]
 player_commands = ["money", "pay", "econadmin"]

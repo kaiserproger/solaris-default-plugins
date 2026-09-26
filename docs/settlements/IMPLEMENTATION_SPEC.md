@@ -13,26 +13,31 @@
 
 Это идентификаторы основы исследования; чужие незакоммиченные изменения не сбрасывать. Для implementation-checkpoint нужно зафиксировать собственный bounded working-tree snapshot. В этой работе production-код не меняется и игровые сценарии не запускались.
 
-### 1.1 Пакет уже не пустая заготовка
+### 1.1 Компонентный пакет
 
-[plugin.toml](../../solaris-settlements/plugin.toml) объявляет `solaris-settlements`, version 1.0.0, API 0.6.0, storage/storage_batches, inventory_transfers, persistent_residents, resident_work, resident_orders, world_sites, structure_operations и player_queries. `[client]` и worldgen selector отсутствуют.
+[plugin.toml](../../solaris-settlements/plugin.toml) объявляет `solaris-settlements`,
+version 1.0.0, API 0.7.0, entry `plugin.wasm`, `operation.result` и ровно
+`storage`, `inventory_transfers`, `persistent_residents`, `resident_work`,
+`world_sites`, `structure_operations`. Пакет server-only: `[client]` и
+worldgen selector отсутствуют.
 
-[main.lua](../../solaris-settlements/main.lua) — около 6 тысяч строк: записи поселений/зданий/жителей/отрядов, durable intents, CAS, найм/демобилизация, снабжение и диспетчер команд. Текст прямо фиксирует server-only состояние. Текущая циклическая логика проверяет присутствие игроков/актуальность supply projection; это не готовая автономная симуляция государства.
+[sources/solaris-settlements](../../sources/solaris-settlements) — Rust source
+компонента. Он хранит только plugin operation counter и координирует
+`homes`/`survey`/`prepare`/`fund`/`advance`/`spawn`/`bind` и bounded resident
+work. Core остаётся владельцем сайтов, инвентаря, структур, жителей, receipt и
+fence.
 
-[README.md](../../solaris-settlements/README.md) описывает 22 авторских чертежа и команды создания, принятия site, survey, строительства, профессий, найма, squad orders и ролей. Чертежи/генератор сохранять и развивать, а не заменять с нуля.
+[README.md](../../solaris-settlements/README.md) фиксирует deployable layout,
+команды и воспроизводимую сборку core-Wasm → component `plugin.wasm`.
+`structures/` содержит авторские TOML blueprints. В deployable directory нет
+`main.lua`, `config.toml` или client bundle.
 
-[config.toml](../../solaris-settlements/config.toml): 24 поселения, 64 здания, 40 жителей, 8 squads, 16 pending operations; цикл 1200 ticks. Это текущие ограничения прототипа, не масштаб нового overhaul.
+### 1.2 Граница текущей поставки
 
-### 1.2 Где документация расходится с кодом/другими документами
-
-- README/main.lua пакета ещё называют writable warehouse и catalogue wiring отсутствующими. Текущий [core PLUGINS.md](../../../solaris/docs/PLUGINS.md) уже документирует `bind_warehouse`, player↔warehouse transfer и включение runtime-каталога через `structures/` + required features. Старое сообщение не является надёжной полной картой нынешнего ядра.
-- При этом документированный warehouse transfer допускает **одного игрока и один склад**; resident↔warehouse и warehouse↔warehouse этим путём отказываются. Полную логистику нельзя считать готовой из-за наличия `warehouse` в union.
-- Core имеет [client_view.rs](../../../solaris/crates/mc-script/src/client_view.rs), а [lua.rs](../../../solaris/crates/mc-script/src/lua.rs) задаёт `CLIENT_MANIFEST_SCHEMA = 2`. Core-документация описывает wire 3/schema 2 views.
-- В текущем Loader [LoaderHandshake.java](../../../solaris-loader/loader-core/src/main/java/dev/solaris/loader/LoaderHandshake.java) задаёт `PROTOCOL_VERSION = 2`; [LoaderContentArchive.java](../../../solaris-loader/loader-core/src/main/java/dev/solaris/loader/LoaderContentArchive.java) задаёт `INDEX_SCHEMA = 1`, 128 items, 128 assets, 64 KiB index, 64 MiB activated assets, 1 block per bundle/8 blocks aggregate. Полный сквозной новый UI не подтверждён.
-- `docs/MEMORY.md` в core наверху ещё говорит «vanilla villages не генерируются». Текущие [main.rs](../../../solaris/crates/mc-server/src/main.rs), `village_plan_source_for_startup`, и [VILLAGE_GENERATION.md](../../../solaris/docs/VILLAGE_GENERATION.md) уже содержат включённый vanilla village path. Этот код имеет явное отключение core-villages при наличии plugin settlement plan.
-- Core документирует terrain-adaptation как column-height analogue, а не полную ванильную density arithmetic; не все template mobs спавнятся. Не заявлять полную vanilla parity только на основании слова `vanilla`.
-
-Вывод: есть полезный работающий каркас и отдельные upstream-слои, но **нет проверенной единой client+server поставки такого overhaul**. Предреализационный контракт нужно замыкать по фактическим источникам и реальным сценариям, а не «повторно написать всё C1–C4» или довериться устаревшим `MISSING_CORE_CALLS`.
+Этот package доказывает bounded server-side settlement flow, но не доказывает
+полную кампанию, автономную государственную симуляцию или Loader UI. Будущие
+content/UI этапы должны добавлять реальные component APIs и client evidence, а
+не возвращать Luau runtime или помещать продукт в core/SDK.
 
 ### 1.3 Какие существующие решения использовать
 
@@ -57,19 +62,17 @@
 
 В core не живут список «восемь культур», цены оружия, законы наследования, баланс налога или enum конкретных settlements-мечей. Общий native `equipment profile` допустим; `if plugin == solaris-settlements` для механики недопустим.
 
-### 2.2 Luau-пакет — игровая политика
+### 2.2 Component-пакет — игровая политика
 
 В `solaris-default-plugins/solaris-settlements`:
 
-- принятие/развитие поселений и права участников;
-- семьи, династии, титулы, договоры, технологии;
-- хозяйственные планы, заказы, kit/doctrine, обучение и найм;
-- зарплаты/рента/торговые контракты, выбор реальных источников;
-- определение врагов/союзников через bounded policy;
-- очереди строительства и интерфейсные модели;
-- авторские content data, blueprints, assets и localization.
+- bounded settlement command flow и его plugin-local operation counter;
+- выбор site/home/warehouse и запросы core-authoritative действий;
+- bounded resident haul, issue, craft и harvest orders;
+- авторские structure blueprints.
 
-Политика вызывает общие исполняемые механики; не loop `damage_entity` для боя, не 500 `move_to` каждый tick, не генерация блоков из Lua на worldgen worker.
+Политика вызывает общие исполняемые механики; не loop `damage_entity` для боя,
+не 500 `move_to` каждый tick и не генерация блоков из package на worldgen worker.
 
 ### 2.3 Loader — клиентская презентация
 
@@ -98,47 +101,25 @@ Core обязан собираться без обоих siblings. Loader обя
 
 Production-манифест переключается на Loader-required только после согласованного core/Loader пути; не делать несовместимый обязательный клиент преждевременным default. После cutover текущий server-only путь не поддерживается параллельно как скрытый fallback полной игры.
 
-### 3.2 Предлагаемая структура авторских исходников
+### 3.2 Текущая структура авторских исходников
 
 ```text
 solaris-settlements/
   plugin.toml
-  config.toml
-  main.lua
-  modules/
-    settlements.lua
-    population.lua
-    economy.lua
-    logistics.lua
-    technology.lua
-    military.lua
-    diplomacy.lua
-    dynasties.lua
-    views.lua
-    recovery.lua
-  content/
-    items/
-    recipes/
-    technologies/
-    jobs/
-    unit_kits/
-    engines/
-    campaigns/
+  plugin.wasm
+  README.md
   structures/
-  client/
-    views/
-    models/
-    textures/
-    animations/
-    sounds/
-    lang/
+sources/
+  solaris-settlements/
+    Cargo.toml
+    Cargo.lock
+    src/lib.rs
 ```
 
-Это целевые пути, сейчас не объявленные поддерживаемыми package artifacts. До их применения расширить strict discovery и authoring contract. Не добавлять произвольные файлы с надеждой, что loader их проигнорирует.
-
-Для Luau нужен минимальный **startup-only owner-relative module mechanism**: перечисленные/проверенные файлы, один VM, кэш результата модуля, запрет циклов/выхода из пакета, strict type-check каждого файла, общий memory/fuel budget. Это предлагаемая host-возможность, не утверждение о работающем `require`. Она нужна для уже большого main.lua и конкретных доменных границ, а не универсальная система динамических плагинов.
-
-Контент читается/компилируется native startup loader вне 16 MiB Lua heap; VM получает компактные IDs/разрешённые запросы, не копию всех моделей и 768 больших таблиц.
+`solaris-settlements/` — строгий deployable package. `sources/` не
+развёртывается сервером; он собирает Rust raw Wasm и кодирует
+`plugin.wasm`. Не возвращать `main.lua`, package-local modules, config или
+client bundle без работающего component contract и отдельного evidence.
 
 ### 3.3 Версии
 
@@ -228,6 +209,28 @@ World blocks, container slots, item components, entity lifecycle/UUID, position,
 - Смена treaty policy не оставляет разрешение на последующий удар по бывшему противнику без повторной проверки.
 - Unloaded не означает dead, missing inventory не означает empty, accepted не означает completed.
 - Нельзя читать неизвестную противнику информацию через UI/action errors/карты, даже если она известна серверу.
+
+### 5.5 Демография: reconciliation с current resident model (CP-048)
+
+Сверено с живым core, не с прежним описанием.
+
+**Что пакет ведёт сам** (assignment/социальные связи — plugin, §6.1 спецификации; household — policy unit):
+
+- `Household`: member refs (resident handles), дом (POI id), личные inventory endpoints, потребности/социальная policy. Без health/позиции.
+- `ResidentSocial` на каждый core handle: household ref, `age_origin`, культура/навыки, гражданское/военное assignment, contract ref.
+- Намерения и их recovery: `MigrationIntent`, `BirthIntent`, `RelocationIntent` — CAS-запись до native effect, проекция после authoritative result, как в §7.2/§7.3.
+
+**Что берётся из core без изменений**: `Claim`, `Spawn { spawn_site_token }`, `SetPois`, `Release`, `Query`, `Treat`; resident handle/UUID/generation, lifecycle (`AliveLoaded | AliveUnloaded | Dead`), реальный инвентарь/экипировка, health, death. Одна занятая жильём единица = один consumed spawn-site token на одного жителя; `ReserveResidentSite` выдаёт token на generation identity.
+
+**Чего сейчас нет и что нужно core** (блокирует переселение, DEM-01/§6.7): композиция существующих вызовов живого жителя не переселяет, и дело не только в occupancy. В текущей модели **идентичность выводится из generation identity**: `resident_handle_for_generation(plugin_id, generation_id)` даёт handle, `resident_entity_uuid(generation_id)` — entity UUID, `resident_spawn_site_token(plugin_id, generation_id)` — token сайта, а settlement-резервация отображает token на `poi_id`. Плюс `release_resident_site` возвращает `Blocked`, пока site consumed или привязан к рождённому жителю (тест `release_refuses_a_reservation_consumed_by_a_resident_spawn`).
+
+Следствие: новый дом = другой generation identity = другой token, другой handle и другой UUID. Значит, «перенести личность и имущество» нельзя выразить ни свободным `SetPois`, ни связкой reserve/release: нужен один owner transition, который (а) освобождает прежнюю занятость, (б) потребляет token нового дома и (в) **переносит запись жителя на новую generation, сохраняя handle и UUID**. Последнее меняет правило вывода идентичности для переселяемых жителей и потому требует ADR-обновления и отдельного решения владельца: это изменение identity model, а не только occupancy. Пакет не добавляет для этого собственный reconciler/cleanup и не пересоздаёт жителя.
+
+Пока это решение не принято, срезы CP-048, не зависящие от переселения (households, взрослая миграция, рождение, паузы по жилью/еде, смерть опекуна, проверки roster/POI), идут вперёд; срез «Preserve identity and property across relocation» ждёт решения.
+
+**Время**: `age_origin`/due tick хранятся абсолютным owner tick; «сейчас» берётся из tick обслуженного callback (event context). Возраст и переходы выводятся лениво на уже приходящих событиях household/housing/food/notification; timer допустим только там, где контракт требует автономного перехода в точный tick и существующие события его не дают. Отдельная global demographic simulation не заводится (§11).
+
+**Приёмка остаётся DEM-01/DEM-02 (§15.4) плюс shared `settlement-cargo`.**
 
 ## 6. Экономические и inventory API
 

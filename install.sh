@@ -40,8 +40,8 @@ for package in "${packages[@]}"; do
   [[ "$package" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fail "invalid package name: $package"
   [[ -z "${selected[$package]+present}" ]] || fail "duplicate package: $package"
   selected[$package]=1
-  [[ -f "$source_dir/$package/plugin.toml" && -f "$source_dir/$package/main.lua" ]] ||
-    fail "not a deployable package in this checkout: $package"
+  [[ -f "$source_dir/$package/plugin.toml" && -f "$source_dir/$package/plugin.wasm" ]] ||
+    fail "not a deployable component package in this checkout: $package"
   [[ ! -e "$destination/$package" && ! -L "$destination/$package" ]] ||
     fail "package already exists; no files replaced: $destination/$package"
 done

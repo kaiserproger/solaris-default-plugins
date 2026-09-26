@@ -1,5 +1,9 @@
 # Basic Economy
 
-**Deployment: Server-only.** No Solaris Loader is required; an ordinary vanilla 26.1.2 client can use this plugin.
+**Deployment: Server-only API 0.7 WebAssembly component.** No Solaris Loader
+is required; an ordinary vanilla 26.1.2 client can use this plugin.
 
-This API `0.6.0` example persists balances, protects an economy zone, and exposes a server-owned inventory menu for the `/economy` command. Copy the directory into the configured plugin root or enable the bundled id `basic-economy`.
+The component preserves `basic-economy`'s `shop:economy:<uuid>` v2 ledger,
+economy zone, `/economy [shop]` command, server-owned inventory menu, and
+atomic inventory/storage purchase and refund transactions. `plugin.wasm` is
+rebuilt from `sources/basic-economy/` by `tools/build_standard_pack.py`.

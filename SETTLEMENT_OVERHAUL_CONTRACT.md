@@ -71,7 +71,7 @@ API владелец выбрал сначала полный upstream-конт�
 
 ## 2. Владение и итоговая поставка
 
-Итоговый пакет: `solaris-settlements`, `api = "0.6.0"`, один владелец
+Итоговый пакет: `solaris-settlements`, `api = "0.7.0"`, один владелец
 поселений, рекрутов, доменных записей и клиентского bundle. Новые bounded API
 расширяют текущий контракт; произвольный доступ Luau к миру/ECS запрещён.
 
@@ -225,8 +225,8 @@ blocked_route / interrupted. За уже подтверждённую работ
   и восстановления курсора, не доверия исключительно памяти обработчика.
 - Все операции bounded; нет all-world сканов, неограниченных списков,
   генерации в Lua на worldgen worker, блокирования регионов на клиентском UI.
-- Capabilities/events/commands и требуемые расширения проверяются strict при
-  старте. `api = "0.6.0"` само по себе не подтверждает наличие новых операций.
+- Capabilities, events, commands и требуемые расширения проверяются strict при
+  старте. `api = "0.7.0"` само по себе не подтверждает наличие новых операций.
   Предлагается закрытый `required_features` в manifest; неизвестный или
   отсутствующий feature блокирует загрузку, а не включает декоративный fallback.
 
@@ -317,7 +317,7 @@ Snapshot показывает свободные, зарезервированн
 
 ```text
 solaris.survey_site(request_id, dimension, bounds, purpose)
-solaris.prepare_structure(request_id, operation_id, blueprint_id,
+solaris.prepare_structure(request_id, operation_id, site_id, blueprint_id,
     anchor, rotation, survey_token, expected_site_revision)
 solaris.advance_structure(request_id, operation_id, structure_id, stage,
     reservation_ref, expected_revision)
@@ -333,9 +333,10 @@ solaris.structure_status(request_id, structure_id)
 по связанным участкам. Истечение токена — перепроверка, не разрушение проекта.
 Snapshot не загружает бесконечную область; `unloaded` сообщает, что не обследовано.
 
-`prepare_structure` проверяет blueprint, геометрию, пересечения, права,
-свободный путь к входу и связь с дорогой. Возвращает постоянный structure_id,
-зарезервированный footprint, план этапов, объём работ и revisions.
+`prepare_structure` names the adopted site explicitly, then checks blueprint,
+geometry, intersections, rights, a free path to the entrance, and the road
+connection. It returns a durable structure_id, reserved footprint, staged plan,
+work volume, and revisions.
 Ничего не строит и не списывает деньги.
 Права проверяются и при исполнении: чужой claim не обходится правами плагина.
 

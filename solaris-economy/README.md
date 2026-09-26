@@ -2,4 +2,14 @@
 
 **Deployment: Server-only.** This is the standard pack's sole virtual-money authority. It stores one bounded, versioned ledger and offers `/money`, `/pay <player-uuid> <amount> <token>`, and operator-only `/econadmin <set|add> <player-uuid> <amount>`.
 
-The caller-supplied lowercase transfer token makes `/pay` idempotent per sender while that token remains in the configured bounded retention window; the oldest token is evicted when the window fills. Storage CAS serializes mutations and stale updates are rejected. Accounts begin with the configured balance when first mutated. The ledger is intentionally capped; use a future core transactional multi-record API before raising the limit. The existing `basic-economy` example is a separate item-currency shop demonstration and should not be enabled alongside this plugin as a second money authority.
+The lowercase transfer token names a durable storage-batch operation per
+sender. Before a new `/pay`, the package probes its receipt. A payment committed
+through this path cannot debit again after the bounded ledger window evicts its
+token or a reload loses the callback. Old ledger tokens have no retroactive
+receipt and retain only their original bounded retention guarantee. The
+balance update and token commit atomically under the existing
+`ledger-v1` key. A refused or uncertain outcome reloads the ledger; it is not
+rolled back or retried under a fresh token. `/econadmin` still uses ledger CAS.
+Accounts begin with the configured balance. The ledger remains capped. The
+`basic-economy` example is a separate item-currency shop; do not enable it
+alongside this plugin as a second money authority.

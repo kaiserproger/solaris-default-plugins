@@ -1,0 +1,104 @@
+{
+  "schema": 2,
+  "screens": [{
+    "id": "solaris-settlements:overview",
+    "kind": "settlement",
+    "title": "Settlement overview",
+    "widgets": [{
+      "type": "paged_table",
+      "id": "state",
+      "columns": [
+        {"id": "name", "label": "Name", "align": "left", "width_bucket": 2},
+        {"id": "value", "label": "Value", "align": "left", "width_bucket": 2},
+        {"id": "detail", "label": "Detail", "align": "left", "width_bucket": 3}
+      ]
+    }, {
+      "type": "resource_panel",
+      "id": "counts",
+      "label": "Settlement",
+      "entries": [
+        {"id": "residents", "label": "Residents"},
+        {"id": "buildings", "label": "Buildings"}
+      ]
+    }, {
+      "type": "input_text",
+      "id": "building",
+      "label": "Building to fund",
+      "max_bytes": 32
+    }, {
+      "type": "select_enum",
+      "id": "rotation",
+      "label": "Gate rotation",
+      "options": [
+        {"id": "0", "label": "0 degrees"},
+        {"id": "90", "label": "90 degrees"},
+        {"id": "180", "label": "180 degrees"},
+        {"id": "270", "label": "270 degrees"}
+      ]
+    }, {
+      "type": "input_number",
+      "id": "x",
+      "label": "Gate origin X",
+      "min": -29999984, "max": 29999984, "step": 1
+    }, {
+      "type": "input_number",
+      "id": "y",
+      "label": "Gate origin Y",
+      "min": -64, "max": 319, "step": 1
+    }, {
+      "type": "input_number",
+      "id": "z",
+      "label": "Gate origin Z",
+      "min": -29999984, "max": 29999984, "step": 1
+    }, {
+      "type": "action_button",
+      "action_id": "solaris-settlements:refresh",
+      "label": "Refresh"
+    }, {
+      "type": "action_button",
+      "action_id": "solaris-settlements:page_next",
+      "label": "Next page"
+    }, {
+      "type": "action_button",
+      "action_id": "solaris-settlements:page_prev",
+      "label": "Previous page"
+    }, {
+      "type": "action_button",
+      "action_id": "solaris-settlements:fund",
+      "label": "Fund building"
+    }, {
+      "type": "action_button",
+      "action_id": "solaris-settlements:preview_gate",
+      "label": "Preview palisade gate"
+    }, {
+      "type": "world_marker",
+      "id": "placement_0",
+      "label": "Gate 0 degrees",
+      "action_id": "solaris-settlements:project_gate",
+      "preview_id": "solaris-settlements:palisade_gate_0"
+    }, {
+      "type": "world_marker",
+      "id": "placement_90",
+      "label": "Gate 90 degrees",
+      "action_id": "solaris-settlements:project_gate",
+      "preview_id": "solaris-settlements:palisade_gate_1"
+    }, {
+      "type": "world_marker",
+      "id": "placement_180",
+      "label": "Gate 180 degrees",
+      "action_id": "solaris-settlements:project_gate",
+      "preview_id": "solaris-settlements:palisade_gate_2"
+    }, {
+      "type": "world_marker",
+      "id": "placement_270",
+      "label": "Gate 270 degrees",
+      "action_id": "solaris-settlements:project_gate",
+      "preview_id": "solaris-settlements:palisade_gate_3"
+    }]
+  }],
+  "world_previews": [],
+  "blocks": [],
+  "items": [],
+  "assets": [],
+  "sounds": []
+}

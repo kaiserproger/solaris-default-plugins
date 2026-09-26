@@ -1,7 +1,8 @@
 id = "solaris-essentials"
 name = "Solaris Essentials"
 version = "0.1.0"
-api = "0.6.0"
+api = "0.7.0"
+entry = "plugin.wasm"
 events = ["player.left", "player.died"]
 capabilities = ["storage", "player_teleport", "player_queries"]
 player_commands = ["sethome", "home", "delhome", "setspawn", "spawn", "setwarp", "warp", "delwarp", "back", "tpa", "tpaccept", "msg", "reply"]

@@ -1,16 +1,17 @@
 # AGENTS — solaris-default-plugins
 
-Independent sibling of `../solaris` (core). Owns production Luau plugin
-packages only. Core loads these from a deployed `[plugins].directory`; it
-must build and run without this checkout.
+Independent sibling of `../solaris` (core). Owns production WebAssembly
+component plugin packages only. Core loads these from a deployed
+`[plugins].directory`; it must build and run without this checkout.
 
 ## Rules
 
-- One directory per package: `plugin.toml` + `main.lua`, optional
-  `config.toml` + `README.md`. Keep `api = "0.6.0"`.
-- No cross-plugin service contracts exist in API 0.6: no manifest-level
+- One directory per package: `plugin.toml` + `plugin.wasm`, optional
+  `config.toml` + `README.md`. Keep `api = "0.7.0"` and explicitly set
+  `entry = "plugin.wasm"`.
+- No cross-plugin service contracts exist in API 0.7: no manifest-level
   dependencies, no calls into another package.
-- Strict-safe: every event/capability/command the code uses must be
+- Strict-safe: every event/capability/command the component uses must be
   declared; no stray files in package dirs.
 - Worldgen selectors are exclusive: at most one ore profile and one
   settlement plan across the deployed set.

@@ -1,0 +1,22 @@
+[package]
+name = "solaris-plugin-integration-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bytes = "1"
+mc-data = { path = "../../../solaris/crates/mc-data" }
+mc-entity = { path = "../../../solaris/crates/mc-entity" }
+mc-nbt = { path = "../../../solaris/crates/mc-nbt" }
+mc-net = { path = "../../../solaris/crates/mc-net", features = ["load-bench"] }
+mc-plugin-host = { path = "../../../solaris/crates/mc-plugin-host" }
+mc-protocol = { path = "../../../solaris/crates/mc-protocol" }
+mc-script = { path = "../../../solaris/crates/mc-script" }
+mc-test-harness = { path = "../../../solaris/crates/mc-test-harness" }
+mc-world = { path = "../../../solaris/crates/mc-world" }
+mc-worldgen = { path = "../../../solaris/crates/mc-worldgen" }
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+zip = { version = "8.4", default-features = false, features = ["deflate-flate2-zlib-rs"] }

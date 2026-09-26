@@ -7,8 +7,15 @@ world/
 *.bak
 *~
 
-# Agent-harness config for this checkout (advisor wiring, not package source).
-WATCHDOG.yml
+# Cargo output for component source workspaces; deployable package Wasm is tracked.
+sources/**/target/
+
+ # Agent-harness config for this checkout (advisor wiring, not package source).
+ WATCHDOG.yml
+
+ # Agent/harness scratch: local analysis output and Python caches.
+ .analysis/
+ tools/__pycache__/
 
 # Editor / OS cruft.
 .vscode/
