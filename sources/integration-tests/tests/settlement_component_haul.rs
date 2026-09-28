@@ -152,8 +152,8 @@ async fn exercise_shipped_component_hire(boundary: &mc_script::ScriptBoundary) {
                 "revision": 1,
                 "buildings": {
                     "warehouse_1": {
-                        "blueprint_id": "solaris:warehouse",
-                        "structure_id": STRUCTURE
+                        "purpose": "solaris:warehouse",
+                        "origin": { "origin": "structure", "structure_id": STRUCTURE }
                     }
                 },
                 "residents": {
