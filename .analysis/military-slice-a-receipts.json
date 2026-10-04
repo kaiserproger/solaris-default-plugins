@@ -1,0 +1,115 @@
+{
+ "adapter": "solaris-client/.analysis/native10/native_r2_military.py",
+ "artifact": "military-slice-a-per-model-receipts",
+ "headless_gate": "cargo test --lib military_slice_a_tests (mem-run.sh shared slot, taskset -c 4-11)",
+ "headless_result": {
+  "run": "2026-10-03 slice-A filter",
+  "passed": 8,
+  "failed": 0,
+  "cases": [
+   "slice_a_models_use_natural_inputs_and_paper_carriers",
+   "slice_a_manufacture_routes_through_ordinary_production_admission",
+   "arming_sword_is_one_handed_cut_with_45_degree_cone",
+   "longsword_is_two_handed_cut_with_55_degree_cone_and_needs_free_offhand",
+   "spear_is_two_handed_thrust_with_a_dead_zone",
+   "slice_a_kits_issue_exact_paper_models_with_separate_wage_and_refuse_vanilla_blades",
+   "slice_a_stamina_and_wear_follow_owner_decisions_without_restore",
+   "slice_a_manufacture_and_use_receipts_close_per_model_headless"
+  ],
+  "combined_with_slice_b": "15/15 green (cargo test --lib military_slice_: 8 slice-A + 7 slice-B)"
+ },
+ "adjacent_suites": {
+  "production_tests": "9/9 green",
+  "hire_tests": "8/8 green",
+  "technology_tests": "10/10 green"
+ },
+ "full_lib_suite": "173 passed, 3 failed — all 3 pre-existing in sibling combat/registry work, reproduced with slice filters skipped (158 passed, same 3 failed): combat_tests::guard_requires_settlement_authority_and_attacks_only_the_issued_hostile, combat_tests::squad_order_admits_one_authorized_roster_and_reports_blocked_members, tests::refused_post_attachment_registry_write_preserves_the_original_uuid_without_readmission; NOT touched by this slice (no edits to combat*.rs, hire*.rs, production*.rs, military_catalog.rs)",
+ "models": {
+  "solaris-settlements:arming_sword": {
+   "carrier": "minecraft:paper",
+   "max_stack": 1,
+   "durability": 320,
+   "natural_inputs": {"minecraft:iron_ingot": 2, "minecraft:stick": 1, "minecraft:leather": 1},
+   "manufacture": {
+    "recipe": "solaris-settlements:arming_sword (+quality variants arming_sword_rough/ordinary/good/masterwork, rolled at admission)",
+    "station": "minecraft:crafting_table",
+    "duration_ticks": 320,
+    "selectable": true,
+    "receipt": "Journal insert -> native Committed portion (exact natural inputs, single model output) -> accepted_practice readable; restart + duplicate delivery idempotent, due empty"
+   },
+   "use": {
+    "mode": "melee", "damage_kind": "cut", "base_damage_hp": 5.0,
+    "min_range_blocks": 0.0, "reach_blocks": 1.9,
+    "windup_ticks": 6, "active_ticks": 2, "recovery_ticks": 10,
+    "stamina_cost": 12.0, "shape": {"kind": "cone", "half_angle_degrees": 45.0},
+    "two_handed": false, "wear": 1
+   },
+   "kit": "militia + default infantry: arming_sword(model,equipment-0) + separate emerald wage; vanilla iron_sword refused as non-canonical kit"
+  },
+  "solaris-settlements:longsword": {
+   "carrier": "minecraft:paper",
+   "max_stack": 1,
+   "durability": 280,
+   "natural_inputs": {"minecraft:iron_ingot": 3, "minecraft:stick": 1, "minecraft:leather": 1},
+   "manufacture": {
+    "recipe": "solaris-settlements:longsword (+quality variants longsword_rough/ordinary/good/masterwork, rolled at admission)",
+    "station": "minecraft:crafting_table",
+    "duration_ticks": 480,
+    "selectable": true,
+    "receipt": "same per-model journal/portion/restart receipt as arming_sword"
+   },
+   "use": {
+    "mode": "melee", "damage_kind": "cut", "base_damage_hp": 7.0,
+    "min_range_blocks": 0.0, "reach_blocks": 2.8,
+    "windup_ticks": 10, "active_ticks": 3, "recovery_ticks": 16,
+    "stamina_cost": 22.0, "shape": {"kind": "cone", "half_angle_degrees": 55.0},
+    "two_handed": true, "wear": 1
+   },
+   "kit": "infantry longsword loadout: longsword(model,equipment-0); two-handed kit refuses occupied offhand slot 1 before any move; exact model transfer once free"
+  },
+  "solaris-settlements:spear": {
+   "carrier": "minecraft:paper",
+   "max_stack": 1,
+   "durability": 240,
+   "natural_inputs": {"minecraft:iron_ingot": 1, "minecraft:stick": 2},
+   "manufacture": {
+    "recipe": "solaris-settlements:spear (+quality variants spear_rough/ordinary/good/masterwork, rolled at admission)",
+    "station": "minecraft:crafting_table",
+    "duration_ticks": 240,
+    "selectable": true,
+    "receipt": "same per-model journal/portion/restart receipt as arming_sword"
+   },
+   "use": {
+    "mode": "melee", "damage_kind": "pierce", "base_damage_hp": 5.0,
+    "min_range_blocks": 1.25, "reach_blocks": 3.2,
+    "windup_ticks": 8, "active_ticks": 2, "recovery_ticks": 14,
+    "stamina_cost": 16.0, "shape": {"kind": "thrust", "radius_blocks": 0.18},
+    "two_handed": true, "wear": 1
+   },
+   "kit": "spearman: spear(model,equipment-0) + hauberk + separate emerald wage; exact paper-carried spear, never vanilla stick/trident"
+  }
+ },
+ "stamina": "capacity 100.0, recovery 0.5/tick for all three; per-attack costs 12/22/16; no stamina_restore/refund field on any attack (swap/reconnect/deploy never restore)",
+ "ruleset_basis": "OWNER_DECISIONS §1 values + Main RULESET DECISION (spear explicitly two-handed); proposal, not owner-admitted balance; war/balance/mounted (CP058/059/068) untouched",
+ "patch": [
+  "sources/solaris-settlements/src/military_slice_a_tests.rs (new, 8 tests, slice-A models only; staged)",
+  "solaris-settlements/content-src/{arming_sword,longsword,spear}_{item,model}.json (staged; sha256+size verified against client-src assets)",
+  "solaris-settlements/content-src/r2_materials.json (staged; shared R2 atlas manifest)",
+  "solaris-settlements/client-src/assets/solaris-settlements/items/{arming_sword,longsword,spear}.json (staged)",
+  "solaris-settlements/client-src/assets/solaris-settlements/models/item/{arming_sword,longsword,spear}.json (staged)",
+  "solaris-settlements/client-src/assets/solaris-settlements/textures/item/r2_materials.png (staged; shared atlas bytes)",
+  "lib.rs mod-line hunk NOT staged (left worktree for Main to sequence after slice-B: #[cfg(test)] mod military_slice_a_tests; between mod military_catalog; and mod military_slice_b_tests;)"
+ ],
+ "untouched_by_this_slice": [
+  "military_catalog.rs (all 6 rows; slice-B rows owned by CPMilB)",
+  "production.rs / production_*.rs / production_*.json (CPProdA/B owned; read-only use here)",
+  "hire.rs / hire_tests.rs / combat.rs / combat_tests.rs (read-only kit/plan use; existing tests unmodified)",
+  "slice-B file src/military_slice_b_tests.rs and its lib.rs mod line",
+  "war_bow / mail_hauberk / pavise rows and cases (CPMilB)"
+ ],
+ "unproven": [
+  "live native manufacture/use (windowed inputs staged, live-client lease pending; headless receipt covers journal/portion/restart only)",
+  "live custody trail (inputs staged, same lease gate)",
+  "live damage numbers (headless asserts catalog facts + kit identity only)"
+ ]
+}

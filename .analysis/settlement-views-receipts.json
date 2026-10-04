@@ -1,0 +1,43 @@
+{
+  "adapter": "CPViewsCont (views slice owner: view.rs/view_tests.rs)",
+  "artifact": "settlement-views-public-entry",
+  "attempt6_receipt_confirm": {
+    "binding": "/home/kaiserroman/solaris/.analysis/validation/20261004-native10-r3-gates/positive-attempt6-fixedhelper/native10-r3-binding.json",
+    "fixed_helper": "solaris-settle/.analysis/.../ContentPipeline/final-r3-coherent/plugins/tools/settlements_client.py:1205-1220 (_wire_title: title = owned_view_id)",
+    "matrix": "/home/kaiserroman/solaris/.analysis/validation/20261004-native10-r3-gates/GATE-MATRIX.md (attempt-6 PARTIAL PASS + FAIL)",
+    "opened": {
+      "screen": {
+        "class": "dev.solaris.loader.minecraft.LoaderViewScreen",
+        "open": true,
+        "title": "solaris-settlements:player_contracts"
+      },
+      "view_key": "solaris-settlements:player_contracts"
+    },
+    "public_entry": "PASSES (scenario FAILs later at sealed _attach_generated_actor owner-death, past public entry)"
+  },
+  "canonical_helper_port": "NOT NEEDED: diff canonical tools/settlements_client.py vs fixed helper is empty (exit 0); no dispatch rework per Main correction",
+  "ff5723_resolution": "sealed-scenario sha256 prefix ff57230670cc50ba… (attempt-6 binding identity.sealed_scenario); NOT a helper fn/commit. SettleLead2 confirmed no such helper exists; test written in-file, no duplication.",
+  "files": {
+    "staged_prior": "sources/solaris-settlements/src/view.rs + view_tests.rs (slice staged content, 20-file index)",
+    "worktree_hunks_by_this_slice": [
+      "view.rs:23 add pub(super) const PUBLIC_VIEW_ID = solaris-settlements:player_contracts",
+      "view.rs:856 view_request public-pane routing uses PUBLIC_VIEW_ID (was literal)",
+      "view.rs:3818 view_public_open open_client_view uses PUBLIC_VIEW_ID (was literal)",
+      "view_tests.rs:1301-1382 two new tests (see headless_result)"
+    ],
+    "untracked_receipt": ".analysis/settlement-views-receipts.json (this file; no commit, no staging of others' files)"
+  },
+  "full_lib_suite": "193 passed, 4 failed — ALL 4 sibling-owned, none view-related: combat_tests::guard_requires_settlement_authority… + combat_tests::squad_order_admits… + tests::refused_post_attachment… (same 3 pre-existing per CPMilA receipt, combat/registry files untouched by this slice) + siege_tests::breach_needs_open_siege_of_a_live_war (Err(ForbiddenTarget) vs Err(UnknownTarget); CPWarPolicy active RULESET CP058 file src/siege_tests.rs dated 2026-10-04, never touched by this slice)",
+  "headless_gate": "cargo test --lib view in sources/solaris-settlements (mem-run.sh -m 5G, taskset -c 4-11)",
+  "headless_result": {
+    "failed": 0,
+    "new_tests": [
+      "overview_key_still_routes_to_member_pane_not_public (overview key -> pane 0, no public state)",
+      "public_entry_opens_observed_public_view_not_overview (guest view_request[player_contracts] -> ListOnlinePlayers only, no overview open; answered -> OpenClientView[owned_view_id=player_contracts, session 71]; view_opened -> PresentClientView + instance bound)"
+    ],
+    "passed": 28
+  },
+  "literal_consolidation": "grep solaris-settlements:player_contracts src/ -> only view.rs:23 (const def); zero remaining literals",
+  "outcome": "PASS (slice scope): public entry opens observed owned view; overview key cannot win the wait",
+  "rustfmt": "rustfmt --edition 2021 --check src/view.rs src/view_tests.rs clean; cargo fmt --check diff is only sibling caravan.rs (not this slice)"
+}

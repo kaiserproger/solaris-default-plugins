@@ -1,0 +1,8 @@
+{
+  "id": "solaris-settlements:r2_materials",
+  "path": "assets/solaris-settlements/textures/item/r2_materials.png",
+  "sha256": "c778840f8dad389cfd506fef12a22f58725f841e568370dbb08ffcb2b9d52248",
+  "size_bytes": 307,
+  "origin": "Original 32x32 RGBA pixel-art material atlas authored for Solaris RULESET-R2: upper-left steel, upper-right oak, lower-left leather, lower-right four-pixel linked mail rings. No external image bytes.",
+  "license": "CC0-1.0"
+}

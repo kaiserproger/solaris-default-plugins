@@ -1,0 +1,8 @@
+{
+  "id": "solaris-settlements:arming_sword_item",
+  "path": "assets/solaris-settlements/items/arming_sword.json",
+  "sha256": "da2c46c46354e264b544f7279248ffad0c0f67d3275c5bd22e47209678216d99",
+  "size_bytes": 105,
+  "origin": "Original Solaris RULESET-R2 low-poly geometry and item binding, authored from primitive volumes; no scanned asset or copied vanilla model. Shared original pixel-material atlas.",
+  "license": "CC0-1.0"
+}

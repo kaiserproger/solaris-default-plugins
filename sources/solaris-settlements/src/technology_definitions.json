@@ -1,0 +1,52 @@
+[
+  {
+    "id": "CR1",
+    "parents": [],
+    "practice_recipes": [
+      "solaris-settlements:oak_planks"
+    ],
+    "unlock_recipes": [
+      "solaris-settlements:stick"
+    ]
+  },
+  {
+    "id": "CR2",
+    "parents": [
+      "CR1"
+    ],
+    "practice_recipes": [
+      "solaris-settlements:stick"
+    ],
+    "unlock_recipes": [
+      "solaris-settlements:stone_pickaxe_rough",
+      "solaris-settlements:stone_pickaxe_ordinary",
+      "solaris-settlements:stone_pickaxe_good",
+      "solaris-settlements:stone_pickaxe_masterwork"
+    ]
+  },
+  {
+    "id": "AG1",
+    "parents": [],
+    "practice_recipes": [
+      "solaris-settlements:wooden_hoe_rough",
+      "solaris-settlements:wooden_hoe_ordinary",
+      "solaris-settlements:wooden_hoe_good",
+      "solaris-settlements:wooden_hoe_masterwork"
+    ],
+    "unlock_recipes": [
+      "solaris-settlements:bread"
+    ]
+  },
+  {
+    "id": "AG2",
+    "parents": [
+      "AG1"
+    ],
+    "practice_recipes": [
+      "solaris-settlements:sugar"
+    ],
+    "unlock_recipes": [
+      "solaris-settlements:cake"
+    ]
+  }
+]

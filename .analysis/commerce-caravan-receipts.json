@@ -1,0 +1,70 @@
+{
+  "adapter": "manual headless gate (taskset -c 4-11, mem-run.sh shared slot)",
+  "artifact": "commerce-caravan-payroll-escrow-headless-receipts",
+  "cp_coverage": {
+    "CP-052": "payroll/wages/atomic trade: commerce_runtime employment (wages accrue sim-tick only, replay-safe), commerce_trade atomic physical exchange (no virtual currency)",
+    "CP-053": "physical caravan/cargo: caravan finite routes, caravan_runtime epoch/exclusive execution, cargo_transfer reserved fenced cargo, paid-shipment escrow primitive",
+    "CP-062": "NO product code in this slice: no bribe/tribute/political-effect command exists in owned modules; payment_mandate escrow is the payment primitive a politics action would build on, but the politics outcome itself is unimplemented here",
+    "CP-065": "NO product code in this slice: no shot/cannon/powder/artillery command exists in owned modules; war_bow projectile mention lives in sibling military_slice_b_tests only"
+  },
+  "full_lib_suite": "173 passed, 3 failed — all 3 pre-existing in sibling lanes, zero in owned files: combat_tests::guard_requires_settlement_authority_and_attacks_only_the_issued_hostile, combat_tests::squad_order_admits_one_authorized_roster_and_reports_blocked_members, tests::refused_post_attachment_registry_write_preserves_the_original_uuid_without_readmission (lib_tests registry). No edits to combat*.rs or lib.rs by this slice.",
+  "headless_gate": "taskset -c 4-11 mem-run.sh cargo test --lib -- caravan_tests commerce_tests commerce_player_tests payment_mandate (sources/solaris-settlements)",
+  "headless_result": {
+    "cases": [
+      "caravan_tests::travel_membership_is_unique_by_native_identity_not_copied_provenance",
+      "caravan_tests::blocked_and_parked_cargo_still_excludes_a_second_party",
+      "caravan_tests::finite_routes_refuse_invalid_stances_and_native_scan_overflow",
+      "caravan_tests::due_round_robin_cannot_starve_later_routes",
+      "caravan_tests::unresolved_native_receipt_remains_recoverable_while_party_is_parked",
+      "caravan_tests::loss_requires_the_original_native_actor_epoch_and_exact_component_cargo",
+      "caravan_tests::party_relations_use_actor_identity_not_social_aliases",
+      "caravan_tests::native_partial_room_allocates_only_the_whole_authorized_parcel",
+      "caravan_tests::native_atomic_portion_limit_does_not_hide_a_less_fragmented_plan",
+      "caravan_tests::paid_gross_requires_final_native_unload_at_the_cited_arrival_epoch",
+      "commerce_tests::wages_accrue_only_from_simulation_tick_and_payment_is_replay_safe",
+      "commerce_tests::dismissal_preserves_earned_wages_and_empty_treasury_does_not_mint_money",
+      "commerce_tests::corrupt_or_overflowing_contract_cannot_mutate_earned_money",
+      "commerce_tests::accepted_trade_cannot_be_repriced_reassigned_cancelled_or_reversed_on_replay",
+      "commerce_tests::stale_quote_fence_cannot_be_substituted_for_the_accepted_native_transfer",
+      "commerce_player_tests::current_stock_closes_need_even_when_another_actor_delivered",
+      "commerce_player_tests::paid_ack_requires_exact_components_and_whole_exchange_afterimages",
+      "commerce_player_tests::private_claim_and_receipt_are_not_exposed_to_another_player",
+      "commerce_player_tests::escort_requires_causal_original_start_progress_identity_and_live_session",
+      "payment_mandate::tests::mandate_requires_exact_recipient_scope_price_and_distinct_original_operations",
+      "payment_mandate::tests::immutable_component_bundle_preserves_utf8_and_large_custom_data"
+    ],
+    "failed": 0,
+    "passed": 21,
+    "run": "2026-10-04 owned-slice filter"
+  },
+  "integration_settlement_caravan": {
+    "compile": "clean (cargo test --test settlement_caravan --no-run: Finished, Executable). Ticket claim of '7 ItemStack vs FurnaceSlot errors' is STALE: file contains valid FurnaceSlot<->ItemStack helper conversions (lines 17-25) and compiles; the 7 is the count of #[ignore]d tests, not errors.",
+    "result": "0 passed, 0 failed, 7 ignored — every test #[ignore]d behind explicit populated-vanilla-sidecar gates (ECO12/BUILD08 conservation, carrier loss/loot, ordinary crop source, destination-rights-at-arrival, cold-restart debit/credit, partial-unload, paid no-escrow refusal). Live native proof UNRUN."
+  },
+  "patch": [],
+  "patch_note": "Zero worktree edits by this slice: all owned product files already staged in index (A), worktree matches index (git diff --owned empty). Patch = already-staged set below; no new diff to emit.",
+  "staged_owned_files": [
+    "sources/solaris-settlements/src/caravan_runtime.rs",
+    "sources/solaris-settlements/src/cargo_transfer.rs",
+    "sources/solaris-settlements/src/commerce_player.rs",
+    "sources/solaris-settlements/src/commerce_player_runtime.rs",
+    "sources/solaris-settlements/src/commerce_player_tests.rs",
+    "sources/solaris-settlements/src/commerce_runtime.rs",
+    "sources/solaris-settlements/src/commerce_trade.rs",
+    "sources/solaris-settlements/src/payment_mandate.rs",
+    "sources/solaris-settlements/src/payment_mandate_runtime.rs"
+  ],
+  "untouched_by_this_slice": [
+    "lib.rs (large unstaged residents->npcs/world_structures rewrite belongs to another lane; no hunk from this slice)",
+    "war_policy.rs / combat*.rs / hire*.rs / production*.rs / technology*.rs / view*.rs",
+    "settlement_caravan.rs + support/settlement.rs (compile-verified only, no edits)",
+    "settlement_r2.rs / settlement_r3.rs / migrate_production (fail to compile: non-exhaustive struct, BlockTagIndex, FurnaceSlot max_damage/custom_data — sibling lanes' scope, not mine)"
+  ],
+  "unproven": [
+    "CP-062 paid political action outcome: no implementation, no test (POL-13 gate unmet in this slice)",
+    "CP-065 paid shot outcome: no implementation, no test (GUN/REC-09 gate unmet in this slice)",
+    "Live native caravan delivery/loss/death-cargo/crash/revocation (all 7 integration tests ignored; populated vanilla sidecars required)",
+    "Cold-restart reserve/payout conservation against a live server",
+    "CP-049/050 dependency-ordered acceptance (parallel implementation allowed, closure pending)"
+  ]
+}

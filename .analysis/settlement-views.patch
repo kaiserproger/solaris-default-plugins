@@ -1,0 +1,117 @@
+diff --git a/sources/solaris-settlements/src/view.rs b/sources/solaris-settlements/src/view.rs
+index 419a020..7789960 100644
+--- a/sources/solaris-settlements/src/view.rs
++++ b/sources/solaris-settlements/src/view.rs
+@@ -20,6 +20,7 @@ use crate::{
+ };
+ 
+ pub(super) const VIEW_ID: &str = "solaris-settlements:overview";
++pub(super) const PUBLIC_VIEW_ID: &str = "solaris-settlements:player_contracts";
+ pub(super) const REFRESH: &str = "solaris-settlements:refresh";
+ pub(super) const NEXT: &str = "solaris-settlements:page_next";
+ pub(super) const PREVIOUS: &str = "solaris-settlements:page_prev";
+@@ -852,7 +853,7 @@ impl Settlements {
+     }
+ 
+     pub(super) fn view_request(&mut self, request: &LoaderViewRequest) -> Vec<Command> {
+-        let pane = if request.request_kind == "solaris-settlements:player_contracts" {
++        let pane = if request.request_kind == PUBLIC_VIEW_ID {
+             DOMAINS.len()
+         } else if let Some(pane) = DOMAINS
+             .iter()
+@@ -3814,7 +3815,7 @@ impl Settlements {
+         commands.push(open_client_view(
+             &request,
+             session,
+-            "solaris-settlements:player_contracts",
++            PUBLIC_VIEW_ID,
+             state.model(),
+         ));
+         self.public_contract_views.insert(session, state);
+diff --git a/sources/solaris-settlements/src/view_tests.rs b/sources/solaris-settlements/src/view_tests.rs
+index 8fb7073..81f9dd9 100644
+--- a/sources/solaris-settlements/src/view_tests.rs
++++ b/sources/solaris-settlements/src/view_tests.rs
+@@ -1297,3 +1297,82 @@ fn selected_status_is_independent_of_full_active_index_and_zero_need_cannot_be_a
+         crate::commerce_player::MAX_OFFERS
+     );
+ }
++
++#[test]
++fn public_entry_opens_observed_public_view_not_overview() {
++    use solaris_plugin_sdk::events::{
++        ClientViewOpened, ClientViewOutcome, LoaderViewRequest, OnlinePlayersAnswered, ViewOpened,
++    };
++
++    let mut plugin = Settlements::default();
++    // Guest (non-member) asks for the public screen by its own key.
++    let commands = plugin.view_request(&LoaderViewRequest {
++        session: 71,
++        request_kind: view::PUBLIC_VIEW_ID.to_owned(),
++    });
++    assert!(commands
++        .iter()
++        .any(|command| matches!(command, Command::ListOnlinePlayers(_))));
++    // Overview must not win: no member view opens and no member state exists.
++    assert!(plugin.views.is_empty());
++    assert!(!commands.iter().any(|command| matches!(
++        command,
++        Command::ClientPresentation(ClientCommand::OpenClientView(open))
++            if open.owned_view_id == view::VIEW_ID
++    )));
++    let player_request = plugin
++        .pending_view_players
++        .keys()
++        .next()
++        .cloned()
++        .expect("public player lookup queued");
++    // Authoritative online-players answer for the same guest session.
++    let commands = plugin.view_players_answered(&OnlinePlayersAnswered {
++        request: player_request,
++        players: vec![public_player()],
++        truncated: false,
++    });
++    let open = commands
++        .iter()
++        .find_map(|command| match command {
++            Command::ClientPresentation(ClientCommand::OpenClientView(open)) => Some(open),
++            _ => None,
++        })
++        .expect("public entry must open the owned public screen");
++    // Wire title is the raw owned id (attempt-6 receipt), never the authoring title.
++    assert_eq!(open.session, 71);
++    assert_eq!(open.owned_view_id, view::PUBLIC_VIEW_ID);
++    assert!(plugin.views.is_empty());
++    assert!(plugin.public_contract_views.contains_key(&71));
++    // Observed open completes the handshake: the plugin binds the instance and presents.
++    let request = plugin.public_contract_views[&71].request.clone();
++    let commands = plugin.view_opened(&ClientViewOpened {
++        request,
++        session: 71,
++        outcome: ClientViewOutcome::Opened(ViewOpened {
++            view_instance_id: "public-open-1".to_owned(),
++            revision: 1,
++        }),
++    });
++    assert!(commands.iter().any(|command| matches!(
++        command,
++        Command::ClientPresentation(ClientCommand::PresentClientView(_))
++    )));
++    assert_eq!(
++        plugin.public_contract_views[&71].instance,
++        Some(("public-open-1".to_owned(), 2))
++    );
++}
++
++#[test]
++fn overview_key_still_routes_to_member_pane_not_public() {
++    use solaris_plugin_sdk::events::LoaderViewRequest;
++
++    let mut plugin = Settlements::default();
++    let _ = plugin.view_request(&LoaderViewRequest {
++        session: 7,
++        request_kind: view::VIEW_ID.to_owned(),
++    });
++    assert_eq!(plugin.pending_view_players.values().next(), Some(&(7, 0)),);
++    assert!(plugin.public_contract_views.is_empty());
++}
