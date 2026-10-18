@@ -1,8 +1,0 @@
-{
-  "id": "solaris-settlements:spear_item",
-  "path": "assets/solaris-settlements/items/spear.json",
-  "sha256": "1b9e1a304c949a27ebfe529efbfbccb2d83f5df3258f3bc0e62f70b70ab7aafd",
-  "size_bytes": 98,
-  "origin": "Original Solaris RULESET-R2 low-poly geometry and item binding, authored from primitive volumes; no scanned asset or copied vanilla model. Shared original pixel-material atlas.",
-  "license": "CC0-1.0"
-}

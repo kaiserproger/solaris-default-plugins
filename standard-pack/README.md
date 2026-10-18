@@ -17,9 +17,13 @@ package paths. Set the same `[plugins].directory`, enable `plugins.strict`,
 list every deployed id under `plugins.expected`, and run `solaris --check`.
 There is no server-side bundled-selection list.
 
-For source verification, run `python3 tools/build_standard_pack.py --check`
-from this repository. It independently builds each Rust guest and encodes the
-component through the checked-out core's contract encoder; `--write` is the
-explicit operation that refreshes the tracked `plugin.wasm` outputs.
+For source verification, run
+`python3 tools/build_standard_pack.py --core-root /path/to/solaris --check`
+from this repository. It independently builds all six shipped Rust guests
+(the five standard packages plus optional `basic-economy`) and encodes each
+component through that core checkout's contract encoder. `--write` explicitly
+refreshes the tracked `plugin.wasm` outputs after native candidate validation.
+Rebuild every component after SDK/WIT changes, even when API stays `0.7.0`;
+matching manifest versions do not prove matching Wasm function types.
 
 Intentionally omitted: giant command catalogs, multiworld/cross-dimension teleport, auctions, multiple currencies, nations/geopolitics/upkeep/war, bulk world editing, WorldGuard-style general regions, unbounded logs, and guessed rollback. WorldEdit/WorldGuard-like editing and general protection should remain separate utilities. Each plugin README states the exact current API limitation affecting its subset.

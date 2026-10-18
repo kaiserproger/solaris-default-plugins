@@ -1,8 +1,7 @@
 # Solaris Settlements: upstream-контракт overhaul
 
-Статус: **предложение для реализации, не описание работающих возможностей**.
-Дата: 2026-09-09. Текущий результат задачи — этот контракт; изменения ядра,
-Loader и игровых пакетов ещё не выполнены.
+Статус: **канонический upstream-контракт и сохранённое происхождение C1–C4/L1**, не отчёт о принятой gameplay.
+Редакция: 2026-10-01. Историческое исследование ниже относится к 2026-09-09; текущий source/status и autonomous campaign acceptance — в связанном IMPLEMENTATION_SPEC.
 
 Подтверждено владельцем: полноценное объединение поселений и найма жителей;
 развитие деревни в манор, замок или город; ориентиры Bannerlord / Total War /
@@ -21,9 +20,21 @@ API владелец выбрал сначала полный upstream-конт�
 Новый комплект сохраняет C1–C4/L1 как основание, но явно расширяет конечный
 объём до технологий, 650+ предметов, государств, кавалерии и осад.
 Основа мира теперь — принятие ванильных деревень, не их замена отдельным
-генератором. Разделы «сейчас» и «не выполнено» ниже относятся к исследованию
-2026-09-09; актуальные исходные возможности и расхождения документов отмечены
-в технической части новой спецификации. Это не разрешение на implementation.
+генератором. Разделы исторической исходной точки относятся к 2026-09-09; актуальное состояние определяется manifest/подключёнными исходниками и технической частью, не старым «сейчас». Это документирование решения, не claim о реализации.
+
+**Действующее дополнение 2026-10-01:** autonomous persistent MMO встроено в [SPECIFICATION](docs/settlements/SPECIFICATION.md) §§0.2–0.3, 1.3, 12, 15–20 и [IMPLEMENTATION_SPEC](docs/settlements/IMPLEMENTATION_SPEC.md) §§1.4, 5, 7, 9, 12, 14.0, 15.14. Это единственный gameplay-план, не новый LONG_TERM_PLAN. A0–A8 внешнего задания — crosswalk старых R/CP, не вторая очередь.
+
+Прежние freeze/CP-ARCH-070/no-start CP-050 **сняты прямым решением владельца**: реализация CP-049–096/A0–A8 разрешена параллельно. **Приёмка и закрытие** остаются dependency-ordered: generic purge/API → CP-049 actual BUILD-05/07 → последующие карточки. CP-049 открыт; перенос/старые focused receipts не acceptance. Единственный live per-card cursor — IMPLEMENTATION_SPEC §1.5.
+
+Core — **generic engine + reusable API only, zero gameplay plugins**. Settlement/economy/town/claims state/policy/ledgers, domain building certificates, warehouse binding decisions и все product acceptance tests принадлежат plugins. Generic registered worksite/door/block/container facts, native physical checks/entity/inventory/world journals остаются core. Generated vanilla villages — world feature, не authored policy и не synthetic DurableStructure. Целевой generic `world-structures` / `ScriptWorldStructureOperation` — clean cutover всех callers, не alias/reexport.
+
+**Фактическая поставка при чтении:** API 0.7 Rust/WASM component, command/social/hire/demob/capture/demography/view modules; manifest уже содержит schema-2 `settlements-ui` ZIP для трёх loaders с views/actions/previews/selection/assets/sounds. Core configuration/LoaderManifest требует acknowledgement non-empty declared deployment: README-слово «optional»/vanilla admission расходится с кодом, не является поддержанным обходом. Это **есть в коде/metadata**, не принятая карта/автономная экономика/full UI. Registry v1 под одним ключом и declared 24 settlements/64 residents требуют localized migration/cost proof. Исторические Luau сигнатуры ниже — семантические proposals, не production calls; exact WIT/SDK имеет приоритет.
+
+Постоянны identities/ресурсы/обязательства/местонахождение; наблюдаемая область всех игроков и active effects исполняется физически. Work tickets обслуживают real growth/production/repair/build без игроков; dormant только временно, не скрыто замороженное хозяйство. Finite one-time bootstrap с provenance; Party — путешествующая группа, Squad/Formation — её тактика, Army — объединение parties без копий roster/HP/cargo. House/Clan один, dynasty — его аспект.
+
+Ранние R1–R3 включают paid work/real caravan escort, filtered known-data map/report delivery, минимальную allegiance/aggression/War/end/protection **до рейда**, causal routes, exclusive epoch handoff с двумя наблюдателями и correctness+cost. R8 сохраняет полный scale/recovery gate. Первые offscreen encounters physical-ticket; aggregate combat conditional после predeclared statistical admission. Реальные осады/capture/logistics не заменяются таймером/absolute road blockade; native effects используют текущую проверенную plugin permission, NPC-прокси не обходят PvP-окно.
+
+Сохраняются 768 production plan / минимум 650 equipment definitions, X–XV technology, cavalry, 12 artillery constructs и dynasty/succession, C1–C4/L1/P1/I1 и все прежние acceptance IDs/evidence. Representative early pipeline не ждёт полного каталога. Все дополнительные INV/SIM/ECO/INFO/WAR/TIME/PERF/REC строки owner addition связаны без коллизий как `ADD:*` в IMPLEMENTATION_SPEC §15.14; их статус **required/not run/pending**, не выполнены документацией.
 
 ## 1. Источники и проверенная исходная точка
 
@@ -57,7 +68,7 @@ API владелец выбрал сначала полный upstream-конт�
 генерации: редкость задаётся проверяемыми весами кандидатов, а не обещанием
 конкретного числа городов на произвольной площади.
 
-| Сейчас | Доказательство | Чего это не даёт |
+| Историческая исходная точка 2026-09-09 (не текущий runtime) | Тогдашнее доказательство | Чего это не давало |
 | --- | --- | --- |
 | Найм, роли, home/hold/follow; до 8 активных членов на игрока в конфиге плагина | [colony main](colony-villager-scaffold/main.lua), [config](colony-villager-scaffold/config.toml) | Постоянной личности нанятого бойца и боевого поведения ролей |
 | Один профиль, три уникальных шаблона, до 16 жителей | [manifest](settlement-prototype/plugin.toml), [Lua manifest](../solaris/crates/mc-script/src/lua.rs) | Разных размеров, произвольного каталога зданий и runtime-роста |
@@ -73,13 +84,13 @@ API владелец выбрал сначала полный upstream-конт�
 
 Итоговый пакет: `solaris-settlements`, `api = "0.7.0"`, один владелец
 поселений, рекрутов, доменных записей и клиентского bundle. Новые bounded API
-расширяют текущий контракт; произвольный доступ Luau к миру/ECS запрещён.
+расширяют WIT/DTO контракт; произвольный доступ WASM-компонента к миру/ECS запрещён.
 
 | Репозиторий | Ответственность |
 | --- | --- |
-| `solaris-default-plugins` | Правила поселения, уровни/размеры/специализации, цены/снабжение, очередь строительства, состав отрядов, дипломатическая классификация целей, авторские чертежи, клиентские декларации |
-| `../solaris` | Проверка манифеста, terrain/world snapshots, размещение и восстановление операций, постоянные owner-scoped сущности, физическое выполнение работ/боёв, инвентари, доставка DTO, canonical harness и core-документация |
-| `../solaris-loader` | Закрытая схема экранов/интеракций, проверка bundle, формы/списки, world selection/preview, клавиши, отображение; никаких авторитетных денег, урона или строительства |
+| `solaris-default-plugins` | Вся settlement/social/economic/town/claims/political policy/state, localized ledgers, certificates/warehouse bindings, Party/Army/House/contracts/Knowledge, bootstrap, product acceptance tests, authored blueprints/client declarations |
+| `../solaris` | Generic engine only: manifests, bounded world/structure/worksite API, native entities/HP/items/world journals, physical work/combat/permission constraints, receipts/fences/handoff/ticket admission и generic invariant harness; никаких gameplay plugins/tests |
+| `../solaris-loader` | Bounded декларативная презентация/input/доставка bundles и реальные client scenes; known-data map получает только разрешённый payload, без авторитетных денег/урона/строительства |
 
 Core MUST собираться и запускаться без обоих sibling-репозиториев.
 Интеграционные сценарии явно получают пути к пакетам/Loader. Не возвращать
@@ -162,11 +173,7 @@ profile может иметь другого владельца. Нельзя у
 Первое снабжение вносит игрок; торговые сделки требуют реальных контрагентов
 или явно ограниченного игрового источника, определённого правилами плагина.
 
-Хозяйственные циклы используют simulation ticks. Выгруженное поселение не
-получает бесплатно рассчитанный по wall clock урожай, опыт или завершённые
-стройки. Видимая причина паузы: unloaded / no_workers / missing_input /
-blocked_route / interrupted. За уже подтверждённую работу ресурсы не списываются
-повторно после рестарта.
+Монотонные simulation ticks управляют due work/deadlines, не sky/wall time. Кампания продолжает допущенную native работу без игроков по bounded tickets; dormant без work-ready области временный и требует service до depletion либо явного budget refusal. Нет урожая/XP/строек по elapsed formula. Restart продолжает saved simulation time без downtime catch-up; паузы имеют reason и producer/deadline wakeup, confirmed portions не оплачиваются повторно.
 
 ### 3.4 Рекруты и гарнизон
 
@@ -190,22 +197,17 @@ blocked_route / interrupted. За уже подтверждённую работ
 - Гарнизон реагирует на угрозу, защищает жителей, возвращается на пост;
   дальние бойцы используют линию видимости и настоящие снаряды/боеприпасы.
 
-Полная политическая симуляция королевств, осадные машины и тактическая камера
-со свободным полётом не вытекают автоматически из слова «вайб». Этот контракт
-требует развиваемых поселений и управляемых отрядов, не клона трёх игр целиком.
+Конечный объём расширен спецификацией до государств/наследования, кавалерии/осад/артиллерии и постоянной MMO. Не обещается копия всех систем ориентиров или свободная всеведущая tactical camera. Минимальные politics/player roles/map/cost checks вводятся рано; полный контент не prerequisite первого causal caravan.
 
 ## 4. Общие правила новых core API
 
-В этом документе все сигнатуры ниже **предлагаемые**, сейчас недоступны.
-Имена аргументов — контракт DTO, не доступ к Rust-объектам.
+Сигнатуры ниже — исторические **семантические proposals**, не список доступных current exports. Наличие/недостаток сверять по точному Rust SDK/WIT и capability audit IMPLEMENTATION_SPEC §1.4. Новый public API только generic, все product names/policy из ядра удаляются; без шима к прежнему settlement group.
 
 - `request_id`: существующая script-id грамматика, максимум 64 байта.
 - `operation_id`: долговечная owner-scoped identity по той же грамматике;
   `request_id` коррелирует доставку, `operation_id` — одну игровую операцию.
-- Owner берётся только из admitted plugin, actor — из аутентифицированной
-  сессии. UUID/координаты из UI сами по себе не дают полномочий.
-- Версии/счётчики в Luau — целые в диапазоне `0..2^53-1`; UUID, hashes и
-  opaque handles — строки. Нельзя передавать u64 через округлённый double.
+- Plugin provenance подставляет host; player actor — authenticated session, автономный NPC executor — native admitted principal с bounded delegated mandate. Ни фиктивной session, ни admin-подмены при offline.
+- Rust/WIT integers точны; числовые JSON/Loader поля в safe range `0..2^53-1`, UUID/hash/opaque handles — строки. U64 не округляется через double.
 - Результат: `request_id`, `operation_id` для мутаций, `state`, `revision`,
   `failure`, typed payload. Схема каждого результата закрытая.
 - `state`: rejected / accepted / running / paused / committed / cancelled.
@@ -224,7 +226,7 @@ blocked_route / interrupted. За уже подтверждённую работ
   доставка допустима, повторный игровой эффект нет. Рестарт требует snapshot
   и восстановления курсора, не доверия исключительно памяти обработчика.
 - Все операции bounded; нет all-world сканов, неограниченных списков,
-  генерации в Lua на worldgen worker, блокирования регионов на клиентском UI.
+  генерации guest-кодом на worldgen worker, блокирования регионов на клиентском UI.
 - Capabilities, events, commands и требуемые расширения проверяются strict при
   старте. `api = "0.7.0"` само по себе не подтверждает наличие новых операций.
   Предлагается закрытый `required_features` в manifest; неизвестный или
@@ -242,18 +244,11 @@ blocked_route / interrupted. За уже подтверждённую работ
 
 ## 5. Core: генерация, чертежи и runtime-стройка
 
-### 5.1 Startup-каталог и выбор поселений
+### 5.1 Generic startup-каталог и vanilla village facts
 
-Предлагаемый selector: `settlement_profile = "feudal_settlements"`.
-Он заменяет prototype в новом deployed set, не сосуществует с ним.
-Сам движок не содержит правил «когда стать лордом»: при старте плагин
-предоставляет проверенные определения вариантов и чертежей.
+Прежний `settlement_profile = "feudal_settlements"` selector — отменённый для основного пути proposal, не текущий default. Core vanilla generation остаётся world feature; plugin принимает существующие site/entities/POIs, не заменяя terrain identity и не создавая synthetic DurableStructure.
 
-Новый manifest-контракт должен содержать ссылки на авторский каталог:
-шаблоны, варианты размеров, biome/resource predicates, веса, ограничения
-уклона, footprint, дороги и размещение inhabitants. Core вычисляет кандидатов
-детерминированно по seed/profile revision/координатам и materializes план
-независимо от порядка генерации чанков.
+Authored runtime blueprints — plugin data через checked generic registry. Settlement sizes/weights/социальный bootstrap/развитие принадлежат plugin; generated village descriptors ограничены известными world facts. Catalog ownership не выключает vanilla villages. Новый finite campaign admission/bootstrap не печатает население/ресурсы при повторном discovery.
 
 `Blueprint` schema 1:
 
@@ -272,9 +267,7 @@ blocked_route / interrupted. За уже подтверждённую работ
 
 Предлагаемые стартовые лимиты: 128 blueprints, 64 варианта поселения,
 128 размещений зданий на поселение; один blueprint до 65,536 блоков и
-bounding box до 64×64×64. Каталог до 16 MiB decoded, проверяется вне Luau VM.
-Это отдельные квоты от 16 MiB памяти VM. Полный город не упаковывается
-в один мегашаблон или один Lua callback.
+bounding box до 64×64×64. Каталог до 16 MiB decoded — историческая proposed capacity, native validation вне гостя; Wasmtime guest memory и host allocations ограничиваются отдельно. Полный город не упаковывается в мегашаблон/один callback.
 
 Нужно расширить package discovery для `structures/*.toml` (авторские данные)
 и согласовать whitelist авторских UI/asset sources. Проверенные client ZIP
@@ -302,8 +295,7 @@ site id и inhabitant slot; materialization регистрирует посто�
 handle и связь generation id → UUID до публикации notification. Повторная
 генерация/установка чанка не создаёт второго жителя. Plugin CAS по generation id
 восстанавливает свои записи; потерянное notification восполняется scan.
-Жители созданного профильным генератором поселения сразу принадлежат plugin
-namespace, но это не означает назначенного игрока-владельца или военной службы.
+Сгенерированные vanilla жители не становятся plugin-owned по факту генерации. Принятие/назначение settlement/player owner/службы — explicit plugin intent по generic identity/permission operations; один bootstrap с provenance, без повторного spawn.
 
 `reserve_resident_site` выдаёт durable spawn_site_token для свободного
 завершённого home POI. Token резервирует одно место, потребляется одним
@@ -460,7 +452,7 @@ position при loaded, equipment summary, work/order state, lifecycle и revisi
 ```text
 solaris.query_owned_inventory(request_id, endpoint, expected_revision)
 solaris.transfer_owned_items(request_id, operation_id, actor_id,
-    transfers, expected_revisions)
+    execution_permit, transfers, expected_revisions)
 solaris.reserve_inventory_items(request_id, operation_id, endpoint,
     resource_plan, expected_revision)
 solaris.inventory_reservation_status(request_id, reservation_ref)
@@ -552,13 +544,13 @@ solaris.cancel_resident_order(request_id, operation_id, handles,
 Formation slot assignment стабилен между обновлениями, учитывает footprint
 сущностей, препятствия и уступание пути; невозможный строй сообщает
 `blocked_route`, а не копит бойцов в одной координате. Позиции рассчитываются
-движком, не Lua-циклом команд на каждую сущность каждый tick.
+движком, не per-entity WASM microcommands каждый tick.
 
 Плагин передаёт bounded policy союзников/врагов с revision; core фильтрует
 цели в уже доступном локальном perception. No all-world enemy scans.
 Боевое событие содержит attacker/victim handles, committed damage/kill и
 корреляцию активного order, чтобы плагин мог начислить опыт один раз.
-Не имитировать оружие частыми `damage_entity` из Luau в обход боевой механики.
+Не имитировать оружие частыми guest `damage_entity` в обход native боевой механики.
 
 Target ref не равен управляемому resident handle. Он выдаётся core из
 проверенного world-selection context либо локального perception и может
@@ -596,13 +588,12 @@ owner-scoped с фиксированной snapshot revision и сроком ж�
   core structure_id, condition;
 - `resident:<id>`: settlement/family, постоянный core handle, job либо squad,
   recruitment/training intent; health и equipment не имеют второго authority;
-- `squad:<id>`: settlement, commander, handles, policy/order reference;
+- `party:<id>`: самостоятельная membership/leader/assignment/route/execution-part refs; `squad:<id>`: tactical refs и bounded order; `army:<id>`: joined parties/goal/assembly/supply, без новых людей/казны;
 - `operation:<id>`: kind, reserved/consumed amounts, stage receipts,
   committed/paused/cancelled state;
 - bounded shard indexes, не одна бесконечно растущая JSON/pipe-строка.
 
-Ограничение сейчас — 4,096 live records на plugin. Admission вычисляет
-вместимость до заселения/стройки и резервирует место для operation records.
+4,096 live records — историческая bounded capacity, не новое измерение текущего host. Admission рассчитывает реальную ёмкость по текущему API, reserved intents и costs; localized settlement/party/contract/House записи и indexes заменяют global registry через backup/dry-run/ref/pending-operation migration. Одного увеличения 24/64 недостаточно.
 Завершённые receipts могут компактизироваться только с сохранением dedup
 семантики; удалённая запись не должна снова сделать старую оплату допустимой.
 
@@ -617,7 +608,7 @@ Plugin API остаётся 0.6.0; номера относятся к други
 
 Нужны generic закрытые виджеты: paged table/list, tabs, bounded number/text
 input, enum selection, resource/cost panel, action button, world marker.
-Это не HTML/JS, arbitrary Java, filesystem access или исполнение Lua клиентом.
+Это не HTML/JS, arbitrary Java/WASM, filesystem access или execution slot на клиенте.
 Screens декларативные, экономическая/военная политика остаётся на сервере.
 
 Предлагаемые API жизненного цикла представления:
@@ -717,9 +708,7 @@ Escape отменяет режим. Смена окна, чат, инвента�
 
 Fabric / NeoForge / Forge используют одну модель/validator/presenter;
 платформенные adapters отвечают за native registration, input и lifecycle.
-Несовместимый/отсутствующий Loader отклоняется в Configuration с указанием
-нужной версии/permissions, до допуска в Play. Никакого server-only fallback
-для этого пакета.
+Current core уже требует Loader ack/permissions/exact bundle identities при объявленном client manifest; README optional/vanilla обещание не соответствует этому contract. Отсутствие/несовместимость клиента не допускает обход до Play. Реальный graphical/full-product gate остаётся pending; наличие bundle не принимает UI.
 
 ## 9. Пакет и переход со старых плагинов
 
@@ -748,20 +737,19 @@ Core-owned ссылки исправляются **в core**: `docs/PLUGINS.md`,
 Здесь меняются package directories, root README и собственные инструкции
 разрешённых артефактов после согласованного upstream schema cutover.
 
-## 10. Очередь upstream-задач
+## 10. Сохранённые upstream-ID и зависимости generic API
 
-Это зависимости поставки, не разрешение объявить отдельный этап готовым overhaul.
-Каждая задача принимает свои API/поведение и мигрирует все затронутые callers.
+C1–C4/L1/P1/I1 сохранены как ID/outcome provenance, не вторая live queue. Текущая последовательность R/CP/A-crosswalk — IMPLEMENTATION_SPEC §14.0; все source областей ниже generic, product policy/state/tests не остаются core. Закрытые evidence не переименовываются, текущий acceptance отдельно pending.
 
 | ID | Владелец и целевая область | Результат | Зависимости |
 | --- | --- | --- | --- |
 | C1 | Core: `mc-script`, storage/player inventory adapters | Batch CAS, scan, receipts, bidirectional transfers/reservations, crash recovery предметов/денег | Нет |
-| C2 | Core: `mc-script/src/lua.rs`, `mc-worldgen/src/structures.rs`, world commits | Catalog/schema, размеры/дороги, site discovery/POI, survey/prepare/staged construction с per-portion receipts | C1 и C3; construct worker integration закрывается C4 |
-| C3 | Core: `mc-script`, `mc-net/src/script/villager.rs`, regional entity owner | Постоянные handles, lifecycle snapshots/events, generic adopt/spawn/release identity; interface для worldgen bootstrap | C1 для durable paid-operation intent; не зависит от site catalog C2 |
+| C2 | Core: WIT/DTO + generic world/structure/worksite owners | Checked blueprints/site facts/survey/staged portions/receipts, native live door/block/container checks; domain certificate/binding decisions в P1 | C1/C3 для используемых физических операций, construct work C4; vanilla worldgen не меняется ради policy |
+| C3 | Core: generic resident/entity authority | Durable handles/UUID/lifecycle и physical occupancy/adopt/spawn/release transitions; home/семья/гражданство/демография policy в P1 | C1 для paid intents, не зависит от settlement law/C2 catalog |
 | C4 | Core: canonical inventories, entity work/combat/AI | Реальные работы, equipment, cross-region group admission/orders и formations | C3; C1 для transfers; C2 для construct; общий consumption receipt contract с C1/C2 |
 | L1 | Loader: `loader-core`, `loader-platform-common`, три adapters; core script UI endpoint | Schema 2 / wire 3, instance/context lifecycle, формы/input/preview, equipment presentation | Wire/manifest контракт до edits; разработка не зависит от готовых C2/C4, совпадающий blueprint projection hash обязателен при интеграции |
-| P1 | Plugins: новый объединённый пакет и собственные assets | Доменные данные, рост/экономика/найм/отряды, Loader views, blueprints | C1–C4, L1 |
-| I1 | Core harness + Loader scenarios + deployed package | Strict deployment, миграция ссылок, реальный клиент, restart/adversarial/scale gates | Все предыдущие |
+| P1 | Plugins: existing WASM package/domain modules/assets/tests | Все settlement/social/economic/political state и policies, certificates/bindings, Party/Army/House/Knowledge, локальные records, early UX и product acceptance | Нужные generic C1–C4 + L1, purge/API до CP-049; без cross-plugin service |
+| I1 | Plugin-owned integration scenes + core generic harness + Loader scenes + deployed package | Real commands/client/native work/restart/adversarial/scale evidence и truthful pending matrix | Нужные предыдущие возможности; tests/assertions продукта не компилируются в core |
 
 Чтобы не создать цикл: C1 реализует общий inventory transfer/reservation
 commit и player/warehouse endpoints; C4 подключает resident endpoints на
@@ -778,8 +766,7 @@ Rust root orchestration files только маршрутизируют. Нов�
 
 ## 11. Проверяемая приёмка
 
-Ни один пункт ниже сейчас не выполнен. Это задания для будущих исполняемых
-сценариев. Проверки структуры manifest/DTO не заменяют игру.
+Реестр ниже — сохранённые acceptance требования, не текущий «всё отсутствует» claim. В документационной работе они не запускались. Ранее существующее scoped evidence сохраняется, но не доказывает расширенную кампанию; полнота и ADD crosswalk в IMPLEMENTATION_SPEC §§14–15.
 
 ### 11.1 Core, восстановление и безопасность
 
@@ -823,7 +810,7 @@ Rust root orchestration files только маршрутизируют. Нов�
 | U06 | Все платформы Fabric/NeoForge/Forge, вооружённые NPC и реальные бои | Одинаковая семантика, видимое оружие/броня/действия, отсутствие protocol/render рассинхронизации |
 
 Graphical gates — через canonical harness core и реальный Minecraft под Xvfb,
-со screenshots/video и server receipts. Lua mock, browser-макет или TCP-only
+со screenshots/video и server receipts. Mock, browser-макет или TCP-only
 тест не доказывают внешний вид замка, работу мирового preview или бой.
 
 ### 11.4 Размер и производительность
@@ -839,9 +826,7 @@ requests, world commit время, рост journal и сохранение по
 Для целевых 20 TPS steady-state p95 должен укладываться в 50 ms на
 зафиксированном test host; p99/выбросы отдельно объясняются и не маскируются.
 При непрохождении — реальное исправление/измерение, не уменьшение сценария
-без согласия владельца. Проверить, что background/unloaded не исполняется
-дорогим polling и что plugin handler остаётся в пределах 32 commands и
-100,000 instructions.
+без согласия владельца. Background work не исполняется дорогим polling; guest fuel/epochs/commands/WIT bytes и native induced work admission ограничиваются отдельно. Старые 32 commands/100,000 instructions — исторический proposal, не текущий measured Wasmtime budget и не доказательство campaign scale.
 
 ## 12. Готовность к реализации и конечный критерий
 
@@ -849,10 +834,6 @@ requests, world commit время, рост journal и сохранение по
 C1–C4/L1 и назначить владельца каждой общей границы. Изменение proposed
 лимитов допускается по измерению, но не скрытое исключение игровой ветки.
 
-Контракт считается реализованным только после C1–C4, L1, P1, I1 и A/G/U
-сценариев с приложенными receipts. Зелёный Cargo build, объединённый manifest,
-красивый screenshot без хозяйства либо таблица `tier=castle` не являются
-полноценным settlement overhaul.
+Контракт считается реализованным только по применимым C1–C4/L1/P1/I1 и A/G/U receipts **плюс** полному актуальному R/CP/addition acceptance crosswalk. Старые evidence не расширяются на новые возможности. Cargo build/manifest/screenshot без хозяйства/tier flag не являются full overhaul.
 
-Текущая поставка: техническое задание и карта зависимостей. Игровые пакеты,
-ядро, Loader, существующие миры и deployment settings не изменены.
+Документационная alignment/A0 не объявляет gameplay принятой. Текущее прямое разрешение владельца включает implementation CP-049–096/A0–A8; исходные documentation-only/no-start freeze ограничения исторические и отменены. Builds/tests/real-client gates во время параллельных правок не запускались; CP-049 BUILD-05/07 и autonomous acceptance pending, последующие closure только по зависимостям. Текущий код/proof/gaps — IMPLEMENTATION_SPEC §1.5, исторические C/L/R/CP evidence сохранены.

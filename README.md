@@ -1,9 +1,10 @@
 # Solaris Default Plugins
 
 First-party plugin source for the Solaris server (`../solaris` core repo).
-The standard pack and `solaris-settlements` are API 0.7 WebAssembly component
-packages: each deployed directory has `plugin.toml` + `plugin.wasm`, with an
-optional `config.toml`.
+The standard pack ships five API 0.7 WebAssembly component packages: each
+deployed directory has `plugin.toml` + `plugin.wasm`, with an optional
+`config.toml`. Settlement gameplay is owned natively by the core server in
+`../solaris`; this repository ships no settlement component.
 
 ## Packages
 
@@ -13,29 +14,58 @@ towns, audit) — see `standard-pack/README.md` for scope and omissions:
 - `solaris-permissions`, `solaris-essentials`, `solaris-economy`,
   `solaris-towns`, `solaris-audit`
 
-Legacy examples and worldgen selectors:
+Optional component:
 
-- `basic-economy`, `land-claims`, `online-roster`, `geological-mines`,
-  `currency-catalog` (fixture). They remain source/reference material until
-  each is migrated to an API 0.7 component; `install.sh` does not deploy them.
+- `basic-economy` — inventory-backed shop, separate from the standard pack's
+  virtual currency. Install it by explicitly selecting its package name.
 
-- `solaris-settlements` — the single settlement component (server-side,
-  `structures/*.toml` authored blueprints, no Loader requirement). Installed
-  explicitly; a deployed set holds at most one settlement profile. It replaces
-  the removed `colony-villager-scaffold` and `settlement-prototype` packages.
+Legacy source/reference examples (not deployable components):
+
+- `land-claims`, `online-roster`, `geological-mines`;
+  `currency-catalog` is a fixture. `install.sh` does not deploy these.
 
 ## Repository layout
 
-- `<package>/` — an API 0.7 deployable component package (the standard pack and
-  `solaris-settlements`).
+- `<package>/` — an API 0.7 deployable component package (a standard-pack member).
 - `sources/` — Rust source workspaces for component packages; source never
   enters a deployed package directory.
 - `standard-pack/` — docs only; the deployed behaviour lives in the five member
   packages.
-- `tools/` — repository tools (`gen_structures.py` generates and verifies the
-  settlement package's `structures/*.toml`).
+- `tools/` — repository tools (standard-pack build/publication, generic
+  content-pipeline validation, integration gates).
 - `evidence/` — point-in-time verification receipts for the settlement wave
   (what was run, what passed, what was missing). Not a package; never deployed.
+
+Integration gates (`tools/run_integration.py`): the `standard-pack` profile
+byte-verifies all six shipped components against the selected core SDK/WIT,
+runs `plugin_standard_pack`, and starts the real `solaris-v2` server with the
+five standard packages, then with all six shipped components together.
+Settlement domain acceptance tests were v1-runtime-bound and deleted 2026-10-15;
+settlement behavior now lives natively in the core server (`../solaris`).
+Archive:
+`/home/kaiserroman/solaris/.analysis/archive/sibling-v1-integration-tests/integration-tests-pre-phase5-20261015.tgz`.
+
+Rebuild all shipped components whenever the core SDK/WIT changes, even if the
+manifest API version remains `0.7.0`; that version alone does not establish
+binary ABI compatibility:
+
+```sh
+python3 tools/build_standard_pack.py --core-root /path/to/solaris --write
+```
+
+The build validates the entire candidate before replacing any `plugin.wasm`.
+Use `--check` instead of `--write` for deterministic source/artifact verification.
+From the core checkout, run the sibling-owned gates with:
+
+```sh
+SOLARIS_DEFAULT_PLUGINS_ROOT=/path/to/solaris-default-plugins \
+  python3 -m tools.harness run standard-pack
+SOLARIS_DEFAULT_PLUGINS_ROOT=/path/to/solaris-default-plugins \
+  python3 -m tools.harness run standard-pack --real-client
+```
+
+The real-client gate connects a graphical Java client and checks `/money`.
+There is no `settlement-cargo` profile: settlements now belong to core.
 
 ## Deployment workflow
 
@@ -83,35 +113,10 @@ Package API/configuration validation belongs to the server, not the copy
 script. The core binary loads deployed directories only; it never compiles
 these sources in. Manual copying remains valid on other platforms.
 
-### Deployed set used for live verification
-
-Install the five standard packages plus the settlement package explicitly:
-
-```sh
-bash install.sh --directory /path/to/server/plugins \
-  solaris-permissions solaris-essentials solaris-economy solaris-towns \
-  solaris-audit solaris-settlements
-```
-
-```toml
-[plugins]
-directory = "/path/to/server/plugins"
-strict = true
-expected = [
-  "solaris-permissions", "solaris-essentials", "solaris-economy",
-  "solaris-towns", "solaris-audit", "solaris-settlements",
-]
-```
-
-`solaris-settlements` commands work with a vanilla client. Its optional
-Loader view bundle does not change the server's command authority. It is the
-only settlement profile in the set — the removed `settlement-prototype` and
-`colony-villager-scaffold` packages must not be deployed beside it.
-
 ## Component API contract
 
-- API 0.7 applies to the deployed standard pack and `solaris-settlements`;
-  legacy examples above still use their historical manifests and are not
+- API 0.7 applies to the five standard packages and optional `basic-economy`;
+  legacy reference examples above retain historical manifests and are not
   installation targets.
 - Server-only unless the manifest says otherwise; commands work with a vanilla
   client.

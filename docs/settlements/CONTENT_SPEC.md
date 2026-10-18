@@ -517,6 +517,51 @@ EquipmentDefinition
 
 Клиентская анимация/модель не обещает reach, которого не проверяет сервер. Дистанцию мерить от канонического атакующего объёма до hurt shape, а не только между центрами сущностей. Эти диапазоны подлежат проверке PvP и NPC-схватками; не устанавливать их как глобальный vanilla reach.
 
+### 18.2 RULESET-R2: числовое предложение для representative items
+
+**Статус: предложение реализации, не утверждённый владельцем баланс и не результат приёмки.** Таблица фиксируется до runtime-проверок; изменения требуют новой ревизии предложения и повторной проверки, а не подгонки скрытых core defaults. Это шесть настоящих definitions, не заявление CAT-01 о ≥650 принятых предметах. Правила принадлежат plugin; native проверяет допущенные profile values и фактические эффекты.
+
+**Acceptance CP-068: BLOCKED-ON-OWNER-DECISION** — явное itembalance admission каждого proposal value/revision ещё отсутствует; [вопросы с точными рекомендованными значениями §18.2](OWNER_DECISIONS.md#1-ruleset-r2--рекомендовать-точные-существующие-proposal-values). Это NOT admitted defaults. Отдельный generic blocker — genuine SDK catalog identity/hash query; таблица/owner approval не заменяют query или runtime traces.
+
+Все ID ниже имеют namespace `solaris-settlements`, carrier `minecraft:paper`, canonical `item_model` в точности равен полному ID; max stack = 1. Carrier не задаёт damage, reach, темп, броню или тип выстрела. Общий stamina capacity = 100, recovery = 0.5 за simulation tick; смена слота/предмета, reconnect и unload не отменяют уже начатую фазу/recovery. Фазы и скорость измеряются в simulation ticks, расстояния — в блоках, damage — в HP до защиты.
+
+| Definition | Форма / применение | HP / вид | Min–reach | Windup / active / recovery | Stamina | Max durability / wear |
+| --- | --- | --- | --- | --- | --- | --- |
+| `arming_sword` | одноручный удар, cone half-angle 45° | 5 / cut | 0–1.9 | 6 / 2 / 10 | 12 | 320 / 1 за исполненную атаку |
+| `longsword` | двуручный удар, cone half-angle 55°; свободная вторая рука | 7 / cut | 0–2.8 | 10 / 3 / 16 | 22 | 280 / 1 |
+| `spear` | укол, thrust radius 0.18; слабая ближняя зона | 5 / pierce | 1.25–3.2 | 8 / 2 / 14 | 16 | 240 / 1 |
+| `war_bow` | native arrow, thrust radius 0.12; обе руки | 5 / pierce | 4–24 | 16 / 1 / 20 | 18 | 192 / 1 за реальный выстрел |
+| `mail_hauberk` | chest; torso 1, arms 0.75, legs 0.2 | сопротивления ниже | — | — | armor cost 2; mass 8 | 480 / 0.5 за HP воздействия |
+| `pavise` | фронтальная геометрия ниже; manual + deployed | защита, не скрытый damage modifier | — | activation 8 | 14 за блок | 360 / 0.75 за HP блокированного воздействия |
+
+`war_bow` потребляет ровно 1 настоящий `minecraft:arrow` из canonical inventory при native исполнении выстрела; отсутствие лука/ammo, solid obstruction или ещё не готовая фаза не дают projectile/damage/бесплатный refund. Arrow profile: speed 1.5 блока/tick, gravity 0.035 блока/tick², collision radius 0.12, lifetime 160 ticks, recoverable = true, impulse 0.18. Визуальный draw не заменяет server phase.
+
+`mail_hauberk`: resistance cut 0.45, pierce 0.30, crush 0.12, fire 0.05, blast 0.10, hook 0; общий cap результата 0.60. Degradation points `(remaining_fraction, resistance_multiplier)` = `(0,0.2)`, `(0.25,0.6)`, `(1,1)`; соседние точки интерполируются native. Покрытие не защищает голову/ступни и не превращает torso protection в глобальную неуязвимость.
+
+`pavise`: width 1.0, height 1.75, forward offset 0.55, bottom offset 0; hook disables 30 ticks, impulse limit 1.2. Защита ориентирована: атака сзади не блокируется передней плоскостью. Развёртывание перемещает **тот же count=1 stack и все instance components** из carried/equipment в один native world instance; обратный переход требует места. Inventory stack не получает выдуманный UUID. UUID world instance стабилен пока этот instance существует; обычное новое развёртывание может получить новый world UUID.
+
+Торговые ограничения предложения: одноручный меч короче/быстрее двуручного; longsword требует свободной второй руки и дольше восстанавливается; spear выигрывает дистанцию ценой слабой близкой зоны; bow требует расходуемых стрел, фазы и линии выстрела; mail покрывает только объявленные зоны и деградирует; pavise защищает направление и сохраняет единственную custody. Профиль не сообщает клиенту недоказанный range и не вводит глобальный vanilla reach.
+
+Приёмка этого предложения — реальные player/NPC range/phase/coverage/block/deploy traces и консервация компонентов в ITEM-01–05/WAR-01–08; наличие таблицы или шести definitions само по себе не является PASS. См. owner addition §23 о явном числовом ruleset и его утверждении.
+
+### 18.3 RULESET-CP059-SUPPLY: предложение производства tack и корма
+
+**Статус: предложение реализации, ревизия 1; не утверждённый владельцем баланс и не приёмка CP-059.** Числа фиксируются до исполнения native gate согласно owner addition §23. Это обычные vanilla предметы с существующими моделями, компонентами и локализацией; они не прибавляют definitions к квоте 650/768 и не объявляются новыми custom items.
+
+**Acceptance CP-059: BLOCKED-ON-OWNER-DECISION** — количества/station/ticks/wear rev 1 и отдельные mounted feed/healing/stamina/collider/seat/charge/brace значения требуют явного owner admission; [decision sheet](OWNER_DECISIONS.md#2-ruleset-cp059-supply-rev-1--отдельные-вопросы-supply). Рекомендации не admitted defaults. Native horse admission/equipment/carry/rider binding/mounted control остаются отдельным generic API blocker; supply gate не означает mounted acceptance.
+
+| Recipe (`solaris-settlements:`) | Настоящие входы | Настоящий выход | Station | Simulation ticks | Tool wear |
+| --- | --- | --- | --- | --- | --- |
+| `saddle` | 3 `minecraft:leather` + 1 `minecraft:iron_ingot` | 1 `minecraft:saddle` | `minecraft:crafting_table` | 240 | нет |
+| `hay_block` | 9 `minecraft:wheat` | 1 `minecraft:hay_block` | `minecraft:crafting_table` | 80 | нет |
+| `open_hay` | 1 `minecraft:hay_block` | 9 `minecraft:wheat` | `minecraft:crafting_table` | 40 | нет |
+
+Входы поступают из физических inventories: кожа — обычные animal drops/trade, железо — добыча и плавка/trade, пшеница — настоящая farm production/trade. У workshop есть конкретный worker, station и storage; существующий native timed-craft исполняет debit/output и сохраняет gross receipts, а не выдаёт седло по разрешению UI. Упаковка/распаковка сена сохраняет ровно девять единиц пшеницы; replay и cold restart не выпускают ещё одно седло или корм. Качество, custom item ID и копия provenance для этих vanilla outputs не выдумываются.
+
+Производство supply не является кормлением или посадкой. SDK на этой границе пока не предоставляет native horse admission, horse equipment/carry endpoint, rider binding или mounted control: resident kind ограничен villager, vehicle kernel — Boat/Minecart. До появления общего native контракта плагин не хранит второй HP/stamina/mount inventory, не создаёт псевдовсадника и не отправляет teleport/movement вместо riding. Величины лечения, восстановления stamina, mounted collider/seat и charge ещё не допущены этой таблицей.
+
+Приёмка supply: настоящий компонент → команды production/issue/haul → native timed-craft/receipts → exact stock и cold replay в plugin-owned target `settlement_production`, selector `cp059_manufactured_tack_feed_shortage_roundtrip_and_cold_replay_conserve_items`. WAR-09–13 дополнительно требуют настоящий player/NPC + mount UUID, feed consumption, conditional rights/body fences, collision-safe board/dismount, velocity/profile charge, death/loss/unload/region/restart и двух observers; supply gate не закрывает ни один отсутствующий mounted механизм.
+
 ## 19. Визуальное производство
 
 ### 19.1 Стиль
@@ -567,3 +612,44 @@ Icon, inventory/ground transform, first-person/right/left transform, third-perso
 - CAT-12: весь обязательный контент имеет русское и английское название, понятную причину недоступности и внятный каталог в UI.
 
 Считать CAT-01 выполненным только после поведения и арт-приёмки карточек. Сам этот документ не является 768 реализованными предметами и не заявляет такую проверку.
+
+## 21. CP-058: предложение числовой границы war ruleset
+
+Это **proposal, не owner-approved balance и не PASS** (owner addition §23).
+До source-сценариев фиксируется следующий договор:
+
+| Параметр | Предложение | Смысл |
+|---|---|---|
+| grace и окна | Явные абсолютные simulation ticks, без default duration | Campaign admission задаёт grace_end и интервалы `[start,end)`; отсутствие окна запрещает эффект |
+| цели одной войны | Не более 8 известных законных целей | Каждая несёт provenance, observed_at/delivered_at и политическое основание; нет hidden stock/roster |
+| окно одной записи | Не более 8 интервалов | Не повторяющееся календарное PvP и не wall-clock catch-up |
+| policy value | Не более 4096 UTF-8 bytes | Одна localized запись, native storage bound; overflow — отказ, не truncation |
+| эффект после отзыва/мира | 0 новых damage/destruction commits | Уже committed receipt сохраняется; prepared/in-flight эффект проверяет текущие durable revisions, без refund/повтора |
+| offline-owner/private | Явное protection правило campaign admission | Никакого inferred offline-PvP; unknown protection, actor или target запрещает эффект |
+
+Числа и offline policy становятся действующими только через явное admitted
+ruleset с политическими источниками. Server-only вне campaign остаётся
+неизменённым. Наличие predicate/tests не доказывает generic native guard:
+до atomic conditional storage-version проверки physical owner должен отказать,
+а не применять cached permission. **Acceptance CP-058: BLOCKED-ON-OWNER-DECISION** — explicit admitted political ruleset/revision, grace/window ticks, offline/private/neutral/player protection, lawful goals/targets и authority остаются без owner admission; [отдельные вопросы/рекомендации](OWNER_DECISIONS.md#3-cp-058--явный-admitted-political-ruleset-не-inferred-pvp), не inferred PvP defaults. Native build-commit guard landed: guards проверяются в том же синхронном ходе непосредственно перед apply (не атомарно: запись в storage внутри этого хода не видна; core ADR 0009 «Build storage-version guards»); acceptance required/unrun.
+
+## 22. CP-061: предложение ограниченного политического ruleset
+
+**Proposal, не owner-approved balance и не PASS** (owner addition §23).
+Закон задаётся при явном founding charter; отсутствие закона/подписи не
+означает разрешение. Числа фиксируются до source-сценариев:
+
+| Параметр | Предложение | Назначение |
+|---|---|---|
+| House members / genealogy edges | 16 / 16 на House | Original native UUID; родство только из committed DEM birth provenance |
+| Realm titles / fealty ancestry | 8 / 8 | Один локальный политический пакет; ацикличный вассалитет |
+| Charter rights / obligations / known causes | 8 / 8 / 8 | Явные исполнимые права, условия и доставленные причины, без all-pairs графа |
+| Successor policy | seniority, partition, elective | Порядок charter heirs; partition распределяет существующие titles, не имущество |
+| Minor | native age ticks < 0 | Законный holder с ограниченным charter regent, не ускоренное взросление |
+| Unknown/dead/revoked heir | vacant + election required | Нет создания/respawn человека; vanilla player death сам по себе не succession |
+| Storage | 4096 UTF-8 bytes/value, 32 mutations, 80 KiB/frame | Existing native bounds; overflow отказывает целой операции |
+| Payment | exact physical conditional transfer receipt | Expected political storage versions в том же physical decision; не balance/mint |
+
+War policy принадлежит CP-058; trade, passage, aid и fealty независимы.
+Occupation меняет control/security, не private ownership/людей/inventory.
+POL/REC-08 и multi-observer physical-goods сценарии остаются UNRUN.

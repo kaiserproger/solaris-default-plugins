@@ -731,6 +731,64 @@ async fn zero_plugin_deployment_keeps_the_component_boundary_empty() {
 
 #[tokio::test]
 #[ignore = "requires the explicit first-party sibling integration gate"]
+async fn all_shipped_components_start_together_under_the_current_host() {
+    let staged = staged_standard_pack();
+    let target = staged.path().join("basic-economy");
+    std::fs::create_dir(&target).expect("basic-economy staging directory");
+    for name in ["plugin.toml", "plugin.wasm", "config.toml"] {
+        std::fs::copy(package_path("basic-economy").join(name), target.join(name))
+            .unwrap_or_else(|error| panic!("stages basic-economy/{name}: {error}"));
+    }
+    let mut deployment = standard_pack_deployment(staged.path());
+    deployment.expected.push("basic-economy".to_owned());
+    deployment.grants.insert(
+        "basic-economy".to_owned(),
+        [
+            "storage",
+            "inventory_menus",
+            "inventory_storage_transactions",
+            "zones",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect(),
+    );
+    let limits = PluginLimits::default();
+    let packages = mc_plugin_host::discover(&deployment, &limits)
+        .expect("all shipped manifests match the current host capability contract")
+        .into_packages();
+    let host = start_deployment(
+        packages,
+        limits,
+        HostQueues::default(),
+        Arc::new(NoSessions),
+    )
+    .expect("all shipped components instantiate together against the current WIT");
+    assert_eq!(
+        host.boundary()
+            .deployed_packages()
+            .iter()
+            .map(|package| package.plugin_id())
+            .collect::<Vec<_>>(),
+        [
+            "basic-economy",
+            "solaris-audit",
+            "solaris-economy",
+            "solaris-essentials",
+            "solaris-permissions",
+            "solaris-towns",
+        ],
+        "the running catalog contains exactly the six shipped components"
+    );
+    assert_eq!(
+        host.stop().len(),
+        STANDARD_PACK.len() + 1,
+        "the host returns shutdown counters for every shipped component"
+    );
+}
+
+#[tokio::test]
+#[ignore = "requires the explicit first-party sibling integration gate"]
 async fn standard_pack_remains_bounded_while_durable_storage_is_slow() {
     let staged = staged_standard_pack();
     let limits = PluginLimits::default();
@@ -798,6 +856,7 @@ async fn standard_pack_flood_stops_at_the_bounded_event_queue() {
         HostQueues {
             events: 8,
             commands: 32,
+            ..HostQueues::default()
         },
         Arc::new(Sessions),
     )

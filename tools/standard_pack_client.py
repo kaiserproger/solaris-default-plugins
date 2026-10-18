@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -41,14 +43,6 @@ def run_standard_pack_client(
 
     server_port = runtime.reserve_port()
     mcp_port = runtime.reserve_port()
-    expected = ", ".join(f'"{package_id}"' for package_id, _ in standard_pack)
-    grant_rows = []
-    for package_id, capabilities in standard_pack:
-        granted = ", ".join(f'"{capability}"' for capability in capabilities)
-        grant_rows.append(
-            f"[plugins.grants.{package_id}]\ncapabilities = [{granted}]"
-        )
-    grants = "\n".join(grant_rows)
     world_dir = run_dir / "world"
     world_dir.mkdir()
     config = run_dir / "server.toml"
@@ -63,26 +57,20 @@ bind_address = "127.0.0.1"
 port = {server_port}
 [auth]
 online_mode = false
-[admin]
-operators = ["StandardPackGate"]
-allow_local_dev_operators = false
 [plugins]
-directory = "{plugin_root.relative_to(REPO_ROOT).as_posix()}"
-strict = true
-expected = [{expected}]
-{grants}
+directory = "{plugin_root.as_posix()}"
 [data]
-world_dir = "{world_dir.relative_to(REPO_ROOT).as_posix()}"
+world_dir = "{world_dir.as_posix()}"
 seed = 0
-worldgen_mode = "tellus_like"
-[simulation]
-random_tick_speed = 0
-friendly_spawn_interval_ticks = 0
-hostile_spawn_interval_ticks = 0
-[autoscale]
-enabled = false
 """
     )
+    # solaris-v2 reads vanilla ops.json beside its config.
+    operator = "StandardPackGate"
+    (run_dir / "ops.json").write_text(json.dumps([{
+        "uuid": str(uuid.UUID(bytes=hashlib.md5(f"OfflinePlayer:{operator}".encode(),
+                                               usedforsecurity=False).digest(), version=3)),
+        "name": operator, "level": 4, "bypassesPlayerLimit": False,
+    }]) + "\n")
     token = f"standard-pack-{time.time_ns()}"
     server_log_path = run_dir / "server.log"
     server_log = server_log_path.open("wb")
@@ -91,7 +79,7 @@ enabled = false
     mcp = None
     try:
         server = subprocess.Popen(
-            [str(REPO_ROOT / "target" / "debug" / "mc-server"), "--config", str(config), "--no-console"],
+            [str(REPO_ROOT / "target" / "debug" / "solaris-v2"), "--config", str(config)],
             cwd=REPO_ROOT,
             stdout=server_log,
             stderr=subprocess.STDOUT,

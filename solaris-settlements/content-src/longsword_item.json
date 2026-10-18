@@ -1,8 +1,0 @@
-{
-  "id": "solaris-settlements:longsword_item",
-  "path": "assets/solaris-settlements/items/longsword.json",
-  "sha256": "f4e87eea195a89292371dde9dd18ea1d4d7f0eb8754f1bff2c6189a8ac7b937b",
-  "size_bytes": 102,
-  "origin": "Original Solaris RULESET-R2 low-poly geometry and item binding, authored from primitive volumes; no scanned asset or copied vanilla model. Shared original pixel-material atlas.",
-  "license": "CC0-1.0"
-}
