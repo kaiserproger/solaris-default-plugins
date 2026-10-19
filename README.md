@@ -14,10 +14,14 @@ towns, audit) — see `standard-pack/README.md` for scope and omissions:
 - `solaris-permissions`, `solaris-essentials`, `solaris-economy`,
   `solaris-towns`, `solaris-audit`
 
-Optional component:
+Optional components:
 
 - `basic-economy` — inventory-backed shop, separate from the standard pack's
   virtual currency. Install it by explicitly selecting its package name.
+- [`solaris-auth`](solaris-auth/README.md) — offline-mode `/register`, `/login`
+  and `/changepassword`, durable salted hashes, session timeout and build denial.
+  Build explicitly with `--package solaris-auth`; it is not enabled by the
+  default pack. See its README for damage/other-command limitations.
 
 Legacy source/reference examples (not deployable components):
 
@@ -37,9 +41,9 @@ Legacy source/reference examples (not deployable components):
   (what was run, what passed, what was missing). Not a package; never deployed.
 
 Integration gates (`tools/run_integration.py`): the `standard-pack` profile
-byte-verifies all six shipped components against the selected core SDK/WIT,
+byte-verifies all seven shipped components against the selected core SDK/WIT,
 runs `plugin_standard_pack`, and starts the real `solaris-v2` server with the
-five standard packages, then with all six shipped components together.
+five standard packages, then with all seven shipped components together.
 Settlement domain acceptance tests were v1-runtime-bound and deleted 2026-10-15;
 settlement behavior now lives natively in the core server (`../solaris`).
 Archive:
@@ -115,7 +119,7 @@ these sources in. Manual copying remains valid on other platforms.
 
 ## Component API contract
 
-- API 0.7 applies to the five standard packages and optional `basic-economy`;
+- API 0.7 applies to the five standard packages and optional `basic-economy` and `solaris-auth`;
   legacy reference examples above retain historical manifests and are not
   installation targets.
 - Server-only unless the manifest says otherwise; commands work with a vanilla

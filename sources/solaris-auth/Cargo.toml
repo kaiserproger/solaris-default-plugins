@@ -1,0 +1,13 @@
+[package]
+name = "solaris-auth-plugin"
+description = "Offline-mode session authentication component."
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+solaris-plugin-sdk = { path = "../../../solaris/sdk/rust/solaris-plugin-sdk" }
+wit-bindgen = "0.62"

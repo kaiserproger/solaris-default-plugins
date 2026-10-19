@@ -80,7 +80,7 @@ def standard_pack(core_root: Path, artifact_dir: Path, real_client: bool, timeou
                  PLUGINS_ROOT, tuple(package_id for package_id, _ in STANDARD_PACK),
                  timeout_seconds)
     start_server(core_root, artifact_dir, "all-shipped",
-                 PLUGINS_ROOT, tuple(package_id for package_id, _ in STANDARD_PACK) + ("basic-economy",),
+                 PLUGINS_ROOT, tuple(package_id for package_id, _ in STANDARD_PACK) + ("basic-economy", "solaris-auth"),
                  timeout_seconds)
     if real_client:
         sys.path.insert(0, str(core_root))

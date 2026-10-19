@@ -44,7 +44,7 @@ class AuthoringContractRefusals(unittest.TestCase):
         self.assertEqual(
             tuple(package.package_id for package in build_standard_pack.STANDARD_PACKAGES),
             ("solaris-permissions", "solaris-essentials", "solaris-economy",
-             "solaris-towns", "solaris-audit", "basic-economy"),
+             "solaris-towns", "solaris-audit", "basic-economy", "solaris-auth"),
         )
         self.assertNotIn("solaris-settlements",
                          (package.package_id for package in build_standard_pack.PACKAGES))

@@ -19,8 +19,8 @@ There is no server-side bundled-selection list.
 
 For source verification, run
 `python3 tools/build_standard_pack.py --core-root /path/to/solaris --check`
-from this repository. It independently builds all six shipped Rust guests
-(the five standard packages plus optional `basic-economy`) and encodes each
+from this repository. It independently builds all seven shipped Rust guests
+(the five standard packages plus optional `basic-economy` and `solaris-auth`) and encodes each
 component through that core checkout's contract encoder. `--write` explicitly
 refreshes the tracked `plugin.wasm` outputs after native candidate validation.
 Rebuild every component after SDK/WIT changes, even when API stays `0.7.0`;

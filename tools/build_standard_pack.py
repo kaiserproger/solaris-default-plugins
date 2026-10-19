@@ -30,7 +30,9 @@ PACKAGES = (
     Package("solaris-towns", "solaris_towns_plugin.wasm"),
     Package("solaris-audit", "solaris_audit_plugin.wasm"),
     Package("basic-economy", "basic_economy_plugin.wasm"),
+    Package("solaris-auth", "solaris_auth_plugin.wasm"),
 )
+# Rebuild every shipped component on SDK changes; installation remains opt-in.
 STANDARD_PACKAGES = PACKAGES
 TARGET = "wasm32-unknown-unknown"
 
