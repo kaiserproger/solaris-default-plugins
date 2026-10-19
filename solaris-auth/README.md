@@ -3,8 +3,9 @@
 Optional offline-mode authentication for ordinary vanilla clients. Install the
 `solaris-auth` package alongside the other packages in `[plugins].directory`.
 Native v2 discovers every directory entry automatically; no expected-id list or
-explicit precommit registration is supported. The manifest's `before-build`
-hook registers automatically with fail-closed policy.
+explicit precommit registration is supported. The manifest declares the `auth`
+capability alongside `storage` as the explicit auth grant; the native
+fail-closed session gate is the only build/input enforcement path.
 
 Enable the native fail-closed session gate on the matching core build:
 
@@ -29,8 +30,9 @@ quarantine (only the declared authentication commands may pass while locked).
 - Join prompts are Russian + English. An unauthenticated connection is kicked
   after 1,200 native simulation ticks (60 seconds at 20 TPS); five wrong password
   verifications also kick. Logout discards authentication and pending requests.
-- Before authentication, the build hook denies all player block placement and
-  breaking, including a session whose join notification has not arrived.
+- Before authentication, the native gate holds the session locked: only the
+  declared authentication commands may pass, and no other input (including
+  block placement and breaking) reaches the world.
 
 ## Storage and hashing
 
@@ -58,11 +60,11 @@ valuable passwords. The plugin does not claim TLS or online-mode identity.
 
 The component API alone cannot intercept another package's commands, native
 commands or ordinary chat. Deploy with the native `[auth]` gate above; without it
-the plugin provides only build protection, prompts and timeout, **not** full
+the plugin provides only prompts and timeout, **not** build protection or full
 input quarantine. Native v2 rejects `before-damage` declarations: incoming
 environment/mob damage is **not blocked** by this package. It makes no claim of
-full invulnerability or encrypted transport. Unknown sessions fail closed at the
-build hook; reconnect after a plugin instance restart.
+full invulnerability or encrypted transport. Reconnect after a plugin instance
+restart.
 
 Build with `tools/build_standard_pack.py --core-root ../solaris --package solaris-auth`;
 auth is opt-in and is not added to the five-package default installation.

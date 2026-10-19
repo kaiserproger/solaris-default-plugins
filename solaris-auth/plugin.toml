@@ -4,6 +4,5 @@ version = "0.1.0"
 api = "0.7.0"
 entry = "plugin.wasm"
 events = ["player.joined", "player.left"]
-capabilities = ["storage"]
+capabilities = ["storage", "auth"]
 player_commands = ["register", "login", "changepassword"]
-hooks = ["before-build"]

@@ -4,9 +4,8 @@ use std::collections::BTreeMap;
 use solaris_plugin_sdk::events::{CommandInvoked, Event};
 use solaris_plugin_sdk::{
     cancel_timer, disconnect_player, export_plugin, message_session, password_hash,
-    password_verify, schedule_timer, storage_cas, storage_get, unlock_session, BuildContext,
-    BuildDecision, BuildResult, Command, Config, EventContext, Failure, HookActor, InitContext,
-    Plugin, StorageCasOutcome, StorageGetOutcome,
+    password_verify, schedule_timer, storage_cas, storage_get, unlock_session, Command, Config,
+    EventContext, Failure, InitContext, Plugin, StorageCasOutcome, StorageGetOutcome,
 };
 
 const TIMEOUT_TICKS: u64 = 1_200;
@@ -327,24 +326,6 @@ impl Plugin for Auth {
             }
         }
         Ok(commands)
-    }
-
-    fn before_build(&mut self, context: &BuildContext) -> Result<BuildResult, Failure> {
-        let denied = match &context.actor {
-            HookActor::Player(player) => !self
-                .sessions
-                .get(&player.session)
-                .is_some_and(|state| state.authenticated && state.player == player.uuid),
-            _ => false,
-        };
-        Ok(BuildResult {
-            decision: if denied {
-                BuildDecision::Cancel
-            } else {
-                BuildDecision::Keep
-            },
-            expected_plugin_storage_versions: Vec::new(),
-        })
     }
 }
 

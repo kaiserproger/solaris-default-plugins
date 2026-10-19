@@ -5,7 +5,8 @@
 //! loads `account:<lowercase name>`; register hashes then emits the storage swap
 //! immediately; the committed swap alone authenticates (register commit also
 //! unlocks and cancels the timeout); login verifies then unlocks immediately;
-//! the timeout and the fail-closed `before_build` gate the pending session.
+//! the timeout gates the pending session. The native fail-closed session gate
+//! is the only enforcement path; the guest declares no build hook.
 
 use mc_plugin_host::bindings::exports::solaris::plugin::events::{
     CommandInvoked, Event, EventContext, PlayerJoined, PlayerLeft, StorageCasAnswered,
@@ -18,10 +19,9 @@ use mc_plugin_host::bindings::solaris::plugin::storage::{
 };
 use mc_plugin_host::bindings::solaris::plugin::types::Position;
 use mc_plugin_host::{
-    CompiledPlugin, HostServices, LogLevel, PluginInstance, PluginLimits, PluginStartup, engine,
-    linker,
+    engine, linker, CompiledPlugin, HostServices, LogLevel, PluginInstance, PluginLimits,
+    PluginStartup,
 };
-use mc_script::precommit::{BuildContext, BuildEdit, HookActor, HookDecision, HookPlayer};
 
 const API_VERSION: &str = "0.7.0";
 const PLAYER: &str = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -338,17 +338,6 @@ fn commit_register(plugin: &mut PluginInstance<Services>) -> String {
         cas.value.starts_with("$argon2id$"),
         "the stored value is the native PHC hash directly"
     );
-    let pending = plugin
-        .before_build(
-            &build_question(SESSION),
-            std::time::Instant::now() + std::time::Duration::from_secs(1),
-        )
-        .expect("pending registration answers the build hook");
-    assert_eq!(
-        pending.decision,
-        HookDecision::Cancel,
-        "a pending CAS must not authenticate"
-    );
     let committed = plugin
         .on_events(context(1), &[cas_committed(cas.request, 1)])
         .expect("register commit succeeds")
@@ -376,15 +365,6 @@ fn commit_register(plugin: &mut PluginInstance<Services>) -> String {
         "register commit authenticates: registered reply, unlock_session, timeout cancel, login reply"
     );
     cas.value
-}
-
-fn build_question(session: u64) -> BuildContext {
-    BuildContext::try_new(
-        HookActor::Player(HookPlayer::try_new(PLAYER, session).expect("hook player")),
-        "minecraft:overworld",
-        vec![BuildEdit::new(1, 64, -2, 0, 4)],
-    )
-    .expect("build question")
 }
 
 #[test]
@@ -548,84 +528,6 @@ fn pending_commands_wait_for_load() {
 }
 
 #[test]
-fn before_build_fails_closed_until_logged_in() {
-    let (mut plugin, _ticker) = instance("solaris-auth");
-    join_and_read(&mut plugin);
-    let denied = plugin
-        .before_build(
-            &build_question(SESSION),
-            std::time::Instant::now() + std::time::Duration::from_secs(10),
-        )
-        .expect("hook answers before auth");
-    assert_eq!(
-        denied.decision,
-        HookDecision::Cancel,
-        "an unauthenticated session cannot build"
-    );
-    let unknown = plugin
-        .before_build(
-            &build_question(99),
-            std::time::Instant::now() + std::time::Duration::from_secs(10),
-        )
-        .expect("hook answers for an unknown session");
-    assert_eq!(
-        unknown.decision,
-        HookDecision::Cancel,
-        "an unknown session cannot build"
-    );
-    let environment = BuildContext::try_new(
-        HookActor::Environment,
-        "minecraft:overworld",
-        vec![BuildEdit::new(1, 64, -2, 0, 4)],
-    )
-    .expect("environment question");
-    let natural = plugin
-        .before_build(
-            &environment,
-            std::time::Instant::now() + std::time::Duration::from_secs(10),
-        )
-        .expect("hook answers for the environment");
-    assert_eq!(
-        natural.decision,
-        HookDecision::Keep,
-        "non-player causes keep working while locked"
-    );
-    plugin.shutdown().expect("clean component shutdown");
-}
-
-#[test]
-fn before_build_keeps_after_login() {
-    let (mut plugin, _ticker) = instance("solaris-auth");
-    commit_register(&mut plugin);
-    let allowed = plugin
-        .before_build(
-            &build_question(SESSION),
-            std::time::Instant::now() + std::time::Duration::from_secs(10),
-        )
-        .expect("hook answers after auth");
-    assert_eq!(
-        allowed.decision,
-        HookDecision::Keep,
-        "an authenticated session keeps building"
-    );
-    plugin
-        .on_events(context(1), &[left()])
-        .expect("quit clears authentication");
-    let after_quit = plugin
-        .before_build(
-            &build_question(SESSION),
-            std::time::Instant::now() + std::time::Duration::from_secs(1),
-        )
-        .expect("quit session answers the hook");
-    assert_eq!(
-        after_quit.decision,
-        HookDecision::Cancel,
-        "quit must discard authenticated state"
-    );
-    plugin.shutdown().expect("clean component shutdown");
-}
-
-#[test]
 fn changepassword_rekeys_and_relogin_uses_new() {
     let (mut plugin, _ticker) = instance("solaris-auth");
     let _ = commit_register(&mut plugin);
@@ -675,11 +577,9 @@ fn changepassword_rekeys_and_relogin_uses_new() {
         .on_events(context(1), &[auth_command("login", &[PASSWORD], PASSWORD)])
         .expect("old-password login is refused")
         .into_commands();
-    assert!(
-        session_text(&old_password)
-            .iter()
-            .any(|text| text.contains("Wrong password"))
-    );
+    assert!(session_text(&old_password)
+        .iter()
+        .any(|text| text.contains("Wrong password")));
     assert!(!has_command(&old_password, is_unlock));
     let verified = plugin
         .on_events(

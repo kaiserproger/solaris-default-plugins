@@ -297,10 +297,11 @@ def check_package(plugins_dir: Path) -> dict[str, str]:
             raise RuntimeError(f"solaris-auth manifest missing player command {cmd}")
     if "player.joined" not in manifest.get("events", []) or "player.left" not in manifest.get("events", []):
         raise RuntimeError("solaris-auth manifest must declare player.joined/player.left")
-    if "before-build" not in manifest.get("hooks", []):
-        raise RuntimeError("solaris-auth manifest must declare hooks=['before-build']")
-    if "storage" not in manifest.get("capabilities", []):
-        raise RuntimeError("solaris-auth manifest must declare storage capability")
+    if "before-build" in manifest.get("hooks", []):
+        raise RuntimeError("solaris-auth must use the native login gate, not a before-build hook")
+    for capability in ("storage", "auth"):
+        if capability not in manifest.get("capabilities", []):
+            raise RuntimeError(f"solaris-auth manifest must declare {capability} capability")
     # config.toml intentionally absent (native argon2id, no seed): optional, never asserted.
     return {"manifest": str(manifest_path), "wasm": str(wasm_path),
             "config_present": str((pkg / "config.toml").is_file())}
