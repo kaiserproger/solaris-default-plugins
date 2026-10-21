@@ -4,4 +4,4 @@
 
 Each hot-path event performs O(1) bounded queue/ring work; lookup scans only the configured in-memory cap. Storage is one versioned record under the 4096-byte API value bound. Tick values are the latest delivered simulation tick and may skip intermediate ticks.
 
-Container mutations have no committed plugin event, and block events do not include the exact prior block state/properties or block-entity data. `world_blocks` can only set a default block state. Exact rollback is therefore intentionally unavailable rather than guessed; the needed core API is a committed reversible mutation record plus a fenced rollback command.
+Container mutations have no committed plugin event, and block events do not include the exact prior block state/properties or block-entity data, so this plugin cannot roll anything back. Exact block and container rollback is native in the core: operators use `/co inspect`, `/co lookup`, `/co rollback` and `/co restore` (Solaris `docs/OPERATING.md`, "Block log and rollback"), whose attributed pre-images, retention and fenced rollback live beside the world state. This plugin stays a lightweight action feed for the other events above.
