@@ -1,0 +1,3 @@
+# Seconds a grave stays private to its owner. After this the protection is
+# removed and anyone may open or break it. 1..=604800.
+public_after_seconds = 300

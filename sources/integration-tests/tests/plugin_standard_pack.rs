@@ -10,7 +10,8 @@ use std::time::{Duration, Instant};
 
 use mc_plugin_host::bindings::exports::solaris::plugin::events::{
     CommandInvoked, Event, EventContext, OperationAnswered, OperationOutcome, OperationPayload,
-    OperationRefused, StorageCasAnswered, StorageGetAnswered,
+    OperationRefused, StorageCasAnswered, StorageGetAnswered, ZoneCommandAnswered,
+    ZoneCommandOutcome,
 };
 use mc_plugin_host::bindings::exports::solaris::plugin::lifecycle::InitContext;
 use mc_plugin_host::bindings::solaris::plugin::commands::{
@@ -573,6 +574,112 @@ fn standard_components_report_durable_conflicts() {
         session_message(conflict),
         "Town data changed concurrently; retry."
     );
+    towns.shutdown().expect("clean component shutdown");
+}
+
+fn zone_upsert(commands: Vec<Command>) -> (Vec<String>, bool, String) {
+    assert_eq!(commands.len(), 1, "one claim zone is rewritten");
+    match commands.into_iter().next().expect("one command") {
+        Command::UpsertProtectedZone(zone) => {
+            (zone.allowed_actor_uuids, zone.public_use, zone.zone)
+        }
+        other => panic!("expected a protected zone upsert, saw {other:?}"),
+    }
+}
+
+fn zone_answered(zone: String, outcome: ZoneCommandOutcome) -> Event {
+    Event::ZoneCommandAnswered(ZoneCommandAnswered { zone, outcome })
+}
+
+#[test]
+#[ignore = "requires the explicit first-party sibling integration gate"]
+fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
+    const GUEST: &str = "11111111-2222-3333-4444-555555555555";
+    let leader = PLAYER.replace('-', "");
+    let guest = GUEST.replace('-', "");
+    let (mut towns, init) = instance("solaris-towns");
+    let (request, _) = storage_get(init);
+    towns
+        .on_events(context(1), &[storage_read(request)])
+        .expect("town storage load succeeds");
+    let mut send = |event: Event| {
+        towns
+            .on_events(context(1), &[event])
+            .expect("towns handles the event")
+            .into_commands()
+    };
+    // Create the town, then claim the chunk under the leader's feet.
+    let (request, _) = storage_cas(send(command("town", &["create", "oak"], "create oak", false)));
+    assert_eq!(
+        session_message(send(storage_cas_committed(request))),
+        "Town oak created."
+    );
+    let (request, _) = storage_cas(send(command("town", &["claim"], "claim", false)));
+    let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
+    assert_eq!((allowed, public_use), (vec![leader.clone()], false));
+    assert_eq!(
+        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied))),
+        "Chunk claimed for oak."
+    );
+
+    // Trusting a guest rewrites the claim with leader + guest.
+    let (request, _) = storage_cas(send(command("town", &["trust", GUEST], GUEST, false)));
+    let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
+    assert_eq!(allowed, vec![leader.clone(), guest.clone()]);
+    assert!(!public_use);
+    assert_eq!(
+        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied))),
+        "Guest trusted in your claims."
+    );
+    // Trusting the same guest twice is refused before any write.
+    assert_eq!(
+        session_message(send(command("town", &["trust", GUEST], GUEST, false))),
+        "That player is already allowed in your claims."
+    );
+
+    // The leader opens doors to everyone.
+    let (request, _) = storage_cas(send(command("town", &["flag", "use", "on"], "flag use on", false)));
+    let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
+    assert_eq!(allowed, vec![leader.clone(), guest.clone()]);
+    assert!(public_use);
+    assert!(
+        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied)))
+            .starts_with("Everyone may now use doors")
+    );
+
+    // Untrusting removes the guest from the claim again.
+    let (request, _) = storage_cas(send(command("town", &["untrust", GUEST], GUEST, false)));
+    let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
+    assert_eq!(allowed, vec![leader.clone()]);
+    assert!(public_use);
+    assert_eq!(
+        session_message(send(zone_answered(zone, ZoneCommandOutcome::Applied))),
+        "Guest no longer trusted."
+    );
+
+    // A refused zone rewrite rolls the durable change back and restores the zone.
+    let (request, _) = storage_cas(send(command("town", &["trust", GUEST], GUEST, false)));
+    let (_, _, zone) = zone_upsert(send(storage_cas_committed(request)));
+    let (request, _) = storage_cas(send(zone_answered(zone, ZoneCommandOutcome::Refused)));
+    let restored = send(storage_cas_committed(request));
+    assert_eq!(restored.len(), 2, "the old allow-list is re-sent with the notice");
+    let message = restored
+        .into_iter()
+        .filter_map(|command| match command {
+            Command::UpsertProtectedZone(zone) => {
+                assert_eq!(zone.allowed_actor_uuids, vec![leader.clone()]);
+                None
+            }
+            Command::SendMessage(message) => Some(message.text),
+            other => panic!("unexpected rollback command {other:?}"),
+        })
+        .next()
+        .expect("rollback notice");
+    assert_eq!(
+        message,
+        "Claim protection failed; the town change was rolled back."
+    );
+    drop(send);
     towns.shutdown().expect("clean component shutdown");
 }
 

@@ -1,8 +1,10 @@
 id = "solaris-permissions"
 name = "Solaris Permissions"
 version = "0.1.0"
-api = "0.7.0"
+api = "0.8.0"
 entry = "plugin.wasm"
 events = ["server.started"]
 capabilities = ["storage"]
 player_commands = ["perm"]
+# The one package the host lets publish command-permission grants.
+permission_provider = true

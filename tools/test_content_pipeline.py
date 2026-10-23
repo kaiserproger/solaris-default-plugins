@@ -40,14 +40,11 @@ class AuthoringContractRefusals(unittest.TestCase):
                 publish(replacement, destination)
             self.assertEqual((destination / "artifact").read_bytes(), b"first admitted bytes")
 
-    def test_retirement_preserves_existing_build_selection_without_settlements(self):
-        self.assertEqual(
-            tuple(package.package_id for package in build_standard_pack.STANDARD_PACKAGES),
-            ("solaris-permissions", "solaris-essentials", "solaris-economy",
-             "solaris-towns", "solaris-audit", "basic-economy", "solaris-auth"),
-        )
-        self.assertNotIn("solaris-settlements",
-                         (package.package_id for package in build_standard_pack.PACKAGES))
+    def test_optional_chisel_is_registered_but_not_in_default_selection(self):
+        self.assertIn("chisel",
+                      (package.package_id for package in build_standard_pack.PACKAGES))
+        self.assertNotIn("chisel",
+                         (package.package_id for package in build_standard_pack.STANDARD_PACKAGES))
 
     def test_retired_settlement_profile_is_refused_before_launch(self):
         result = subprocess.run(

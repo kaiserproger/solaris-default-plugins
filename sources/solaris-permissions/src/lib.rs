@@ -9,8 +9,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use solaris_plugin_sdk::events::CommandInvoked;
 use solaris_plugin_sdk::{
-    export_plugin, message_session, storage_cas, storage_get, types, Command, Config, Event,
-    EventContext, Failure, InitContext, Plugin, StorageCasOutcome, StorageGetOutcome,
+    export_plugin, log, message_session, publish_command_permissions, storage_cas, storage_get,
+    types, Command, Config, Event, EventContext, Failure, InitContext, LogLevel, Plugin,
+    StorageCasOutcome, StorageGetOutcome,
 };
 use toml::{Table, Value};
 
@@ -117,6 +118,26 @@ impl Settings {
             .get(uuid)
             .map(String::as_str)
             .unwrap_or(&self.default_group)
+    }
+
+    /// The grant table command admission reads, as `"<identity> <node>"` rows.
+    ///
+    /// The default group is published as the `*` default row, so it applies only
+    /// to players without an explicit assignment: a moderator assigned away from
+    /// the default group must not keep the default group's nodes.
+    fn command_entries(&self, assignments: &BTreeMap<String, String>) -> Vec<String> {
+        let mut entries = Vec::with_capacity(
+            self.groups[&self.default_group].len() + assignments.len() * MAX_GROUP_NODES,
+        );
+        for node in &self.groups[&self.default_group] {
+            entries.push(format!("* {node}"));
+        }
+        for (uuid, group) in assignments {
+            for node in &self.groups[group] {
+                entries.push(format!("{uuid} {node}"));
+            }
+        }
+        entries
     }
 
     fn has_node(
@@ -307,18 +328,35 @@ impl Permissions {
         }
     }
 
+    /// Publish exactly the grants this plugin's state now implies.
+    ///
+    /// Refused publications (an invalid node, the entry bound, or a deployment
+    /// that does not name this package the provider) leave the host's previous
+    /// table in force, which is why the rows are rebuilt from state every time.
+    fn publish(&self) {
+        if !publish_command_permissions(&self.settings().command_entries(&self.assignments)) {
+            log(
+                LogLevel::Warn,
+                "command permission publication refused; admission keeps the previous table",
+            );
+        }
+    }
+
     fn storage_get(&mut self, outcome: &StorageGetOutcome) {
         let StorageGetOutcome::Read(record) = outcome else {
             self.loaded = false;
+            self.publish();
             return;
         };
         let Some(assignments) = self.settings().decode_assignments(record.value.as_deref()) else {
             self.loaded = false;
+            self.publish();
             return;
         };
         self.assignments = assignments;
         self.storage_version = record.version;
         self.loaded = true;
+        self.publish();
     }
 
     fn storage_cas(&mut self, request: &str, outcome: &StorageCasOutcome) -> Vec<Command> {
@@ -331,6 +369,8 @@ impl Permissions {
         }
         let StorageCasOutcome::Committed(version) = outcome else {
             self.loaded = false;
+            self.assignments.clear();
+            self.publish();
             let request = self.next_request("reload");
             return vec![
                 message_session(
@@ -342,6 +382,7 @@ impl Permissions {
         };
         self.assignments = pending.assignments;
         self.storage_version = Some(*version);
+        self.publish();
         vec![message_session(pending.session, pending.message)]
     }
 }

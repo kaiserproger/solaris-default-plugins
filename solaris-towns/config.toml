@@ -6,3 +6,4 @@ maximum_members_per_town = 8
 maximum_claims = 24
 invite_expiry_ticks = 2400
 maximum_online_query = 256
+maximum_trusted_per_town = 8

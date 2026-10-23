@@ -23,6 +23,8 @@ const MAX_MEMBERS: usize = 8;
 const MAX_CLAIMS: usize = 24;
 const MAX_INVITE_EXPIRY_TICKS: u64 = 72_000;
 const MAX_ONLINE_QUERY: u32 = 256;
+/// Members plus trusted guests must fit the server's 32-actor zone allow-list.
+const MAX_TRUSTED: usize = 16;
 
 #[derive(Clone)]
 struct Settings {
@@ -34,6 +36,7 @@ struct Settings {
     maximum_claims: usize,
     invite_expiry_ticks: u64,
     maximum_online_query: u32,
+    maximum_trusted_per_town: usize,
 }
 
 impl Settings {
@@ -76,6 +79,12 @@ impl Settings {
                 u64::from(MAX_ONLINE_QUERY),
             )?)
             .expect("validated online player bound fits u32"),
+            maximum_trusted_per_town: bounded_usize(
+                &table,
+                "maximum_trusted_per_town",
+                1,
+                MAX_TRUSTED,
+            )?,
         })
     }
 }
@@ -118,11 +127,17 @@ struct Town {
     leader: String,
     members: BTreeMap<String, Role>,
     claims: BTreeMap<String, Claim>,
+    /// Guests admitted in the claims without joining the town.
+    trusted: BTreeSet<String>,
+    /// Whether everyone may use doors, gates, buttons and levers in the claims.
+    public_use: bool,
 }
 
 enum ZoneAction {
     Add,
     Remove,
+    /// Rewrite every claim's allow-list from the committed town.
+    Sync,
 }
 
 enum PendingStage {
@@ -141,6 +156,17 @@ struct PendingUpdate {
     town_name: Option<String>,
     claim: Option<Claim>,
     stage: PendingStage,
+    /// Zones a `Sync` still waits on.
+    awaiting: BTreeSet<String>,
+    failed: bool,
+    /// The town a failed `Sync` re-sends from its restored state.
+    resync: Option<String>,
+}
+
+enum QueryKind {
+    Invite,
+    Trust,
+    Untrust,
 }
 
 struct InviteQuery {
@@ -148,6 +174,7 @@ struct InviteQuery {
     town: String,
     target_name: String,
     inviter: String,
+    kind: QueryKind,
 }
 
 #[derive(Default)]
@@ -207,6 +234,9 @@ impl Towns {
             town_name,
             claim,
             stage: PendingStage::Save,
+            awaiting: BTreeSet::new(),
+            failed: false,
+            resync: None,
         });
         vec![storage_cas(
             &request,
@@ -249,9 +279,15 @@ impl Towns {
             "claim" | "unclaim" if words.len() == 1 => {
                 self.claim(invoked, &uuid, own.as_deref(), action == "claim")
             }
+            "trust" | "untrust" if words.len() == 2 => {
+                self.trust_command(invoked, &uuid, own.as_deref(), words[1], action == "trust")
+            }
+            "flag" if words.len() == 3 => {
+                self.flag(invoked.session, &uuid, own.as_deref(), &words)
+            }
             _ => vec![message_session(
                 invoked.session,
-                "Usage: /town <info|create|invite|join|leave|role|claim|unclaim>",
+                "Usage: /town <info|create|invite|join|leave|role|claim|unclaim|trust|untrust|flag>",
             )],
         }
     }
@@ -267,10 +303,16 @@ impl Towns {
         vec![message_session(
             session,
             format!(
-                "{}: {} members, {} claims.",
+                "{}: {} members, {} claims. {} trusted guests, doors {}.",
                 town.name,
                 town.members.len(),
-                town.claims.len()
+                town.claims.len(),
+                town.trusted.len(),
+                if town.public_use {
+                    "public"
+                } else {
+                    "members-only"
+                },
             ),
         )]
     }
@@ -298,6 +340,8 @@ impl Towns {
                 leader: uuid.to_owned(),
                 members: BTreeMap::from([(uuid.to_owned(), Role::Leader)]),
                 claims: BTreeMap::new(),
+                trusted: BTreeSet::new(),
+                public_use: false,
             },
         );
         self.save(
@@ -344,6 +388,7 @@ impl Towns {
                 town,
                 target_name: target_name.to_ascii_lowercase(),
                 inviter: invoked.username.clone(),
+                kind: QueryKind::Invite,
             },
         );
         vec![list_online_players(
@@ -371,13 +416,20 @@ impl Towns {
             return vec![message_session(session, "Town member limit reached.")];
         }
         let mut after = self.towns.clone();
-        after
+        let town = after
             .get_mut(&name)
-            .expect("existing town remains in cloned map")
-            .members
-            .insert(uuid.to_owned(), Role::Member);
+            .expect("existing town remains in cloned map");
+        town.members.insert(uuid.to_owned(), Role::Member);
+        town.trusted.remove(uuid);
         self.invites.remove(uuid);
-        self.save(session, after, format!("Joined {name}."), None, None, None)
+        self.save(
+            session,
+            after,
+            format!("Joined {name}."),
+            Some(ZoneAction::Sync),
+            Some(name.clone()),
+            None,
+        )
     }
 
     fn leave(&mut self, session: u64, uuid: &str, own: Option<&str>) -> Vec<Command> {
@@ -397,7 +449,14 @@ impl Towns {
             .expect("membership town remains in cloned map")
             .members
             .remove(uuid);
-        self.save(session, after, format!("Left {name}."), None, None, None)
+        self.save(
+            session,
+            after,
+            format!("Left {name}."),
+            Some(ZoneAction::Sync),
+            Some(name.to_owned()),
+            None,
+        )
     }
 
     fn role(
@@ -555,17 +614,31 @@ impl Towns {
             return Vec::new();
         }
         if matches!(pending.stage, PendingStage::Rollback) {
+            let mut commands = Vec::new();
             if let StorageCasOutcome::Committed(version) = outcome {
                 self.towns = pending.before;
                 self.storage_version = Some(*version);
                 self.loaded = true;
+                // Zones that accepted the failed change get the restored list back.
+                if let Some(town) = pending
+                    .resync
+                    .as_deref()
+                    .and_then(|name| self.towns.get(name))
+                {
+                    commands.extend(
+                        town.claims
+                            .values()
+                            .map(|claim| upsert_claim(town, claim, self.settings())),
+                    );
+                }
             } else {
                 self.loaded = false;
             }
-            return vec![message_session(
+            commands.push(message_session(
                 pending.session,
                 "Claim protection failed; the town change was rolled back.",
-            )];
+            ));
+            return commands;
         }
         let StorageCasOutcome::Committed(version) = outcome else {
             return vec![message_session(
@@ -587,14 +660,35 @@ impl Towns {
                     .expect("zone update names its town"),
             )
             .expect("committed update retains its town");
-        let claim = pending.claim.as_ref().expect("zone update names its claim");
-        pending.stage = PendingStage::Zone;
-        let command = match action {
-            ZoneAction::Add => upsert_claim(town, claim, self.settings()),
-            ZoneAction::Remove => remove_zone(&zone_id(town, claim)),
+        let commands = match action {
+            ZoneAction::Add => {
+                let claim = pending.claim.as_ref().expect("zone update names its claim");
+                vec![upsert_claim(town, claim, self.settings())]
+            }
+            ZoneAction::Remove => {
+                let claim = pending.claim.as_ref().expect("zone update names its claim");
+                vec![remove_zone(&zone_id(town, claim))]
+            }
+            // A member or guest change rewrites the allow-list of every claim.
+            ZoneAction::Sync => {
+                pending.resync = Some(town.name.clone());
+                pending.awaiting = town
+                    .claims
+                    .values()
+                    .map(|claim| zone_id(town, claim))
+                    .collect();
+                town.claims
+                    .values()
+                    .map(|claim| upsert_claim(town, claim, self.settings()))
+                    .collect()
+            }
         };
+        if commands.is_empty() {
+            return vec![message_session(pending.session, pending.message)];
+        }
+        pending.stage = PendingStage::Zone;
         self.pending = Some(pending);
-        vec![command]
+        commands
     }
 
     fn zone_answered(&mut self, zone: &str, outcome: &ZoneCommandOutcome) -> Vec<Command> {
@@ -615,22 +709,37 @@ impl Towns {
             self.pending = Some(pending);
             return Vec::new();
         }
-        let town = self
-            .towns
-            .get(
-                pending
-                    .town_name
-                    .as_deref()
-                    .expect("zone update names its town"),
-            )
-            .expect("committed update retains its town");
-        let claim = pending.claim.as_ref().expect("zone update names its claim");
-        if zone_id(town, claim) != zone {
-            self.pending = Some(pending);
-            return Vec::new();
-        }
-        if matches!(outcome, ZoneCommandOutcome::Applied) {
-            return vec![message_session(pending.session, pending.message)];
+        if pending.resync.is_some() {
+            if !pending.awaiting.remove(zone) {
+                self.pending = Some(pending);
+                return Vec::new();
+            }
+            pending.failed |= !matches!(outcome, ZoneCommandOutcome::Applied);
+            if !pending.awaiting.is_empty() {
+                self.pending = Some(pending);
+                return Vec::new();
+            }
+            if !pending.failed {
+                return vec![message_session(pending.session, pending.message)];
+            }
+        } else {
+            let town = self
+                .towns
+                .get(
+                    pending
+                        .town_name
+                        .as_deref()
+                        .expect("zone update names its town"),
+                )
+                .expect("committed update retains its town");
+            let claim = pending.claim.as_ref().expect("zone update names its claim");
+            if zone_id(town, claim) != zone {
+                self.pending = Some(pending);
+                return Vec::new();
+            }
+            if matches!(outcome, ZoneCommandOutcome::Applied) {
+                return vec![message_session(pending.session, pending.message)];
+            }
         }
         let request = format!(
             "rollback-v{}",
@@ -666,12 +775,22 @@ impl Towns {
         let Some(found) = found else {
             return vec![message_session(
                 query.session,
-                "Online unclaimed player not found or ambiguous.",
+                match query.kind {
+                    QueryKind::Invite => "Online unclaimed player not found or ambiguous.",
+                    QueryKind::Trust | QueryKind::Untrust => {
+                        "Online player not found or ambiguous."
+                    }
+                },
             )];
         };
         let Some(uuid) = normalize_uuid(&found.player) else {
             return Vec::new();
         };
+        match query.kind {
+            QueryKind::Trust => return self.set_trusted(query.session, &query.town, uuid, true),
+            QueryKind::Untrust => return self.set_trusted(query.session, &query.town, uuid, false),
+            QueryKind::Invite => {}
+        }
         if member_town(&self.towns, &uuid).is_some() {
             return vec![message_session(
                 query.session,
@@ -692,6 +811,142 @@ impl Towns {
             ),
             message_session(query.session, "Invitation sent."),
         ]
+    }
+
+    /// Trust or untrust one guest: the allow-list of every claim follows.
+    fn set_trusted(
+        &mut self,
+        session: u64,
+        town_name: &str,
+        guest: String,
+        add: bool,
+    ) -> Vec<Command> {
+        let Some(town) = self.towns.get(town_name) else {
+            return vec![message_session(session, "Town not found.")];
+        };
+        if add {
+            if town.members.contains_key(&guest) || town.trusted.contains(&guest) {
+                return vec![message_session(
+                    session,
+                    "That player is already allowed in your claims.",
+                )];
+            }
+            if town.trusted.len() >= self.settings().maximum_trusted_per_town {
+                return vec![message_session(session, "Trusted guest limit reached.")];
+            }
+        } else if !town.trusted.contains(&guest) {
+            return vec![message_session(
+                session,
+                "That player is not a trusted guest.",
+            )];
+        }
+        let mut after = self.towns.clone();
+        let town = after
+            .get_mut(town_name)
+            .expect("checked town remains in cloned map");
+        if add {
+            town.trusted.insert(guest);
+        } else {
+            town.trusted.remove(&guest);
+        }
+        self.save(
+            session,
+            after,
+            if add {
+                "Guest trusted in your claims."
+            } else {
+                "Guest no longer trusted."
+            },
+            Some(ZoneAction::Sync),
+            Some(town_name.to_owned()),
+            None,
+        )
+    }
+
+    fn trust_command(
+        &mut self,
+        invoked: &CommandInvoked,
+        uuid: &str,
+        own: Option<&str>,
+        target: &str,
+        add: bool,
+    ) -> Vec<Command> {
+        let Some(own) = own.and_then(|name| self.towns.get(name)) else {
+            return vec![message_session(
+                invoked.session,
+                "Only a leader or officer can manage trusted guests.",
+            )];
+        };
+        if !matches!(own.members.get(uuid), Some(Role::Leader | Role::Officer)) {
+            return vec![message_session(
+                invoked.session,
+                "Only a leader or officer can manage trusted guests.",
+            )];
+        }
+        let town = own.name.clone();
+        if let Some(guest) = normalize_uuid(target) {
+            return self.set_trusted(invoked.session, &town, guest, add);
+        }
+        let request = self.next_request(if add { "trust" } else { "untrust" });
+        self.pending_queries.insert(
+            request.clone(),
+            InviteQuery {
+                session: invoked.session,
+                town,
+                target_name: target.to_ascii_lowercase(),
+                inviter: invoked.username.clone(),
+                kind: if add {
+                    QueryKind::Trust
+                } else {
+                    QueryKind::Untrust
+                },
+            },
+        );
+        vec![list_online_players(
+            &request,
+            self.settings().maximum_online_query,
+        )]
+    }
+
+    /// Toggle whether everyone may use doors, gates, buttons and levers in claims.
+    fn flag(
+        &mut self,
+        session: u64,
+        uuid: &str,
+        own: Option<&str>,
+        words: &[&str],
+    ) -> Vec<Command> {
+        let Some(name) = own else {
+            return vec![message_session(session, "Only the leader can set flags.")];
+        };
+        if self.towns[name].leader != uuid {
+            return vec![message_session(session, "Only the leader can set flags.")];
+        }
+        let enabled = match (
+            words[1].to_ascii_lowercase().as_str(),
+            words[2].to_ascii_lowercase().as_str(),
+        ) {
+            ("use", "on") => true,
+            ("use", "off") => false,
+            _ => return vec![message_session(session, "Usage: /town flag use <on|off>")],
+        };
+        let mut after = self.towns.clone();
+        after
+            .get_mut(name)
+            .expect("leader town remains in cloned map")
+            .public_use = enabled;
+        self.save(
+            session,
+            after,
+            if enabled {
+                "Everyone may now use doors, gates, buttons and levers in your claims."
+            } else {
+                "Doors, gates, buttons and levers in your claims are members-only."
+            },
+            Some(ZoneAction::Sync),
+            Some(name.to_owned()),
+            None,
+        )
     }
 
     fn timer(&mut self, timer_id: &str) {
@@ -864,26 +1119,25 @@ fn total_claims(towns: &BTreeMap<String, Town>) -> usize {
     towns.values().map(|town| town.claims.len()).sum()
 }
 
+/// Rows are `name,leader,members,claims` (`v1`, no trusted guests, no flags) or
+/// `name,leader,members,claims,trusted,flags` (`v2`); the encoder writes `v2`.
 fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<String, Town>> {
     let Some(value) = value else {
         return Some(BTreeMap::new());
     };
-    if value == "v1|" {
-        return Some(BTreeMap::new());
-    }
-    let rows = value.strip_prefix("v1|")?;
+    let (version, rows) = value.split_once('|')?;
+    let width = match version {
+        "v1" => 4,
+        "v2" => 6,
+        _ => return None,
+    };
     let mut towns = BTreeMap::new();
     for row in rows.split(';').filter(|row| !row.is_empty()) {
-        let mut fields = row.split(',');
-        let (Some(name), Some(leader), Some(members), Some(claims), None) = (
-            fields.next(),
-            fields.next(),
-            fields.next(),
-            fields.next(),
-            fields.next(),
-        ) else {
+        let fields = row.split(',').collect::<Vec<_>>();
+        if fields.len() != width {
             return None;
-        };
+        }
+        let (name, leader, members, claims) = (fields[0], fields[1], fields[2], fields[3]);
         let leader = normalize_uuid(leader)?;
         if !valid_name(name) || towns.contains_key(name) {
             return None;
@@ -893,6 +1147,8 @@ fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<Str
             leader: leader.clone(),
             members: BTreeMap::new(),
             claims: BTreeMap::new(),
+            trusted: BTreeSet::new(),
+            public_use: false,
         };
         for member in members.split('+').filter(|member| !member.is_empty()) {
             let (uuid, role) = member.split_once(':')?;
@@ -917,6 +1173,22 @@ fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<Str
                 return None;
             }
         }
+        if width == 6 {
+            for guest in fields[4].split('+').filter(|guest| !guest.is_empty()) {
+                let guest = normalize_uuid(guest)?;
+                if town.members.contains_key(&guest) || !town.trusted.insert(guest) {
+                    return None;
+                }
+            }
+            if town.trusted.len() > settings.maximum_trusted_per_town {
+                return None;
+            }
+            town.public_use = match fields[5] {
+                "" => false,
+                "u" => true,
+                _ => return None,
+            };
+        }
         towns.insert(name.to_owned(), town);
         if towns.len() > settings.maximum_towns || total_claims(&towns) > settings.maximum_claims {
             return None;
@@ -936,17 +1208,33 @@ fn encode_towns(towns: &BTreeMap<String, Town>) -> String {
                 .collect::<Vec<_>>()
                 .join("+");
             let claims = town.claims.keys().cloned().collect::<Vec<_>>().join("+");
-            format!("{},{},{members},{claims}", town.name, town.leader)
+            let trusted = town.trusted.iter().cloned().collect::<Vec<_>>().join("+");
+            let flags = if town.public_use { "u" } else { "" };
+            format!(
+                "{},{},{members},{claims},{trusted},{flags}",
+                town.name, town.leader
+            )
         })
         .collect::<Vec<_>>();
-    format!("v1|{}", rows.join(";"))
+    format!("v2|{}", rows.join(";"))
+}
+
+/// Everyone the town's claims admit: its members of every role, then trusted
+/// guests. The server operator is always admitted by the native zone owner.
+fn allow_list(town: &Town) -> Vec<String> {
+    town.members
+        .keys()
+        .chain(town.trusted.iter())
+        .cloned()
+        .collect()
 }
 
 fn upsert_claim(town: &Town, claim: &Claim, settings: &Settings) -> Command {
     commands::Command::UpsertProtectedZone(commands::UpsertProtectedZone {
         zone: zone_id(town, claim),
         dimension: settings.dimension.clone(),
-        allowed_actor_uuid: town.leader.clone(),
+        allowed_actor_uuids: allow_list(town),
+        public_use: town.public_use,
         minimum: types::Position {
             x: (claim.x * 16) as f64,
             y: settings.minimum_y as f64,

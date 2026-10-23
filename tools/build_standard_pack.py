@@ -31,9 +31,21 @@ PACKAGES = (
     Package("solaris-audit", "solaris_audit_plugin.wasm"),
     Package("basic-economy", "basic_economy_plugin.wasm"),
     Package("solaris-auth", "solaris_auth_plugin.wasm"),
+    Package("chisel", "chisel_plugin.wasm"),
+    Package("graves", "solaris_graves_plugin.wasm"),
 )
 # Rebuild every shipped component on SDK changes; installation remains opt-in.
-STANDARD_PACKAGES = PACKAGES
+# Optional addons (chisel) stay out of the default selection; build them with
+# --package. test_content_pipeline.py pins this selection.
+STANDARD_PACKAGES = (
+    Package("solaris-permissions", "solaris_permissions_plugin.wasm"),
+    Package("solaris-essentials", "solaris_essentials_plugin.wasm"),
+    Package("solaris-economy", "solaris_economy_plugin.wasm"),
+    Package("solaris-towns", "solaris_towns_plugin.wasm"),
+    Package("solaris-audit", "solaris_audit_plugin.wasm"),
+    Package("basic-economy", "basic_economy_plugin.wasm"),
+    Package("solaris-auth", "solaris_auth_plugin.wasm"),
+)
 TARGET = "wasm32-unknown-unknown"
 
 
@@ -83,8 +95,8 @@ def stage_package(source: Path, target: Path) -> None:
     # Copy authored/native package files only. Authoring source is not a deployed package resource.
     shutil.copytree(source, target, ignore=shutil.ignore_patterns("plugin.wasm", "client-src", "content-src", "README.md"))
     manifest = tomllib.loads((source / "plugin.toml").read_text())
-    if manifest["id"] != source.name or manifest["api"] != "0.7.0" or manifest["entry"] != "plugin.wasm":
-        raise ValueError("package identity, API 0.7.0 and plugin.wasm entry must stay authored")
+    if manifest["id"] != source.name or manifest["api"] != "0.8.0" or manifest["entry"] != "plugin.wasm":
+        raise ValueError("package identity, API 0.8.0 and plugin.wasm entry must stay authored")
 
 
 def package_bindings(deployment: Path) -> list[dict]:

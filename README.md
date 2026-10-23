@@ -1,7 +1,7 @@
 # Solaris Default Plugins
 
 First-party plugin source for the Solaris server (`../solaris` core repo).
-The standard pack ships five API 0.7 WebAssembly component packages: each
+The standard pack ships five API 0.8 WebAssembly component packages: each
 deployed directory has `plugin.toml` + `plugin.wasm`, with an optional
 `config.toml`. Settlement gameplay is owned natively by the core server in
 `../solaris`; this repository ships no settlement component.
@@ -22,6 +22,15 @@ Optional components:
   and `/changepassword`, durable salted hashes, session timeout and build denial.
   Build explicitly with `--package solaris-auth`; it is not enabled by the
   default pack. See its README for damage/other-command limitations.
+- [`chisel`](chisel/README.md) — datapack-style chisel addon (slab/stair
+  conversion, Loader item bundle). Build explicitly with `--package chisel`;
+  it is not enabled by the default pack.
+- [`graves`](graves/README.md) — death graves: the server's native death path
+  takes a death's drops into a barrel at the death spot when this package is
+  deployed, and the package protects that grave for its owner until
+  `public_after_seconds` elapses. It declares the `death_graves` capability; two
+  packages declaring it refuse startup. Build explicitly with
+  `--package graves`; it is not enabled by the default pack.
 
 Legacy source/reference examples (not deployable components):
 
@@ -30,7 +39,7 @@ Legacy source/reference examples (not deployable components):
 
 ## Repository layout
 
-- `<package>/` — an API 0.7 deployable component package (a standard-pack member).
+- `<package>/` — an API 0.8 deployable component package (a standard-pack member).
 - `sources/` — Rust source workspaces for component packages; source never
   enters a deployed package directory.
 - `standard-pack/` — docs only; the deployed behaviour lives in the five member
@@ -50,7 +59,7 @@ Archive:
 `/home/kaiserroman/solaris/.analysis/archive/sibling-v1-integration-tests/integration-tests-pre-phase5-20261015.tgz`.
 
 Rebuild all shipped components whenever the core SDK/WIT changes, even if the
-manifest API version remains `0.7.0`; that version alone does not establish
+manifest API version remains `0.8.0`; that version alone does not establish
 binary ABI compatibility:
 
 ```sh
@@ -119,7 +128,7 @@ these sources in. Manual copying remains valid on other platforms.
 
 ## Component API contract
 
-- API 0.7 applies to the five standard packages and optional `basic-economy` and `solaris-auth`;
+- API 0.8 applies to the five standard packages and optional `basic-economy`, `solaris-auth`, `chisel` and `graves`;
   legacy reference examples above retain historical manifests and are not
   installation targets.
 - Server-only unless the manifest says otherwise; commands work with a vanilla

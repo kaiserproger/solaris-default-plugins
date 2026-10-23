@@ -1,8 +1,10 @@
 id = "solaris-essentials"
 name = "Solaris Essentials"
 version = "0.1.0"
-api = "0.7.0"
+api = "0.8.0"
 entry = "plugin.wasm"
 events = ["player.left", "player.died"]
 capabilities = ["storage", "player_teleport", "player_queries"]
 player_commands = ["sethome", "home", "delhome", "setspawn", "spawn", "setwarp", "warp", "delwarp", "back", "tpa", "tpaccept", "msg", "reply"]
+# Command admission checks this node against the deployed permission provider.
+command_permissions = { home = "solaris.essentials.use", sethome = "solaris.essentials.use", setwarp = "solaris.essentials.manage", delwarp = "solaris.essentials.manage" }
