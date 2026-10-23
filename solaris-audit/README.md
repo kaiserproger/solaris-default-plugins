@@ -1,6 +1,6 @@
 # Solaris Audit
 
-**Deployment: Server-only.** A bounded append-oriented ring records committed block place/break plus the craft, pickup, kill, living-entity interaction, and death actions exposed by component API 0.7. Operators use `/audit [count]`, `/audit actor <uuid> [count]`, `/audit here <radius> [count]`, or `/audit since <ticks> [count]`.
+**Deployment: Server-only.** A bounded append-oriented ring records committed block place/break plus the craft, pickup, kill, living-entity interaction, and death actions exposed by component API 0.8. Operators use `/audit [count]`, `/audit actor <uuid> [count]`, `/audit here <radius> [count]`, or `/audit since <ticks> [count]`.
 
 Each hot-path event performs O(1) bounded queue/ring work; lookup scans only the configured in-memory cap. Storage is one versioned record under the 4096-byte API value bound. Tick values are the latest delivered simulation tick and may skip intermediate ticks.
 

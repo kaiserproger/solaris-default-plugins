@@ -22,7 +22,7 @@ use mc_plugin_host::{
     PluginStartup,
 };
 
-const API_VERSION: &str = "0.7.0";
+const API_VERSION: &str = "0.8.0";
 const PLUGIN_ID: &str = "graves";
 const PLAYER: &str = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const SESSION: u64 = 7;

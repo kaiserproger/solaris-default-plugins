@@ -42,7 +42,7 @@ const STANDARD_PACK: [(&str, &[&str]); 5] = [
     ("solaris-audit", &["storage"]),
 ];
 
-const API_VERSION: &str = "0.7.0";
+const API_VERSION: &str = "0.8.0";
 const PLAYER: &str = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const SESSION: u64 = 7;
 

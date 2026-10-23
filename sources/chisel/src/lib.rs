@@ -351,6 +351,7 @@ impl Plugin for Chisel {
             trees: None,
             clay: None,
             spawning: None,
+            mob_blueprints: None,
             items: Some(vec![lifecycle::ItemDefinition {
                 id: "chisel:chisel".to_owned(),
                 carrier: "minecraft:stick".to_owned(),

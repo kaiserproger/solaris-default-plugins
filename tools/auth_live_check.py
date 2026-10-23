@@ -289,7 +289,7 @@ def check_package(plugins_dir: Path) -> dict[str, str]:
     if not wasm_path.is_file():
         raise RuntimeError(f"missing built package wasm: {wasm_path} (parent must provide built auth package)")
     manifest = tomllib.loads(manifest_path.read_text())
-    for key, want in (("id", "solaris-auth"), ("api", "0.7.0"), ("entry", "plugin.wasm")):
+    for key, want in (("id", "solaris-auth"), ("api", "0.8.0"), ("entry", "plugin.wasm")):
         if manifest.get(key) != want:
             raise RuntimeError(f"solaris-auth manifest {key}={manifest.get(key)!r}, want {want!r}")
     for cmd in ("register", "login", "changepassword"):

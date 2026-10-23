@@ -157,8 +157,8 @@ def deployment_grants(deployment: Path) -> dict[str, list[str]]:
             raise ValueError(f"duplicate package identity: {identity}")
         if identity != package.name:
             raise ValueError(f"package directory differs from identity: {package.name}: {identity}")
-        if manifest["api"] != "0.7.0" or manifest["entry"] != "plugin.wasm":
-            raise ValueError(f"package must preserve API 0.7.0 and plugin.wasm entry: {identity}")
+        if manifest["api"] != "0.8.0" or manifest["entry"] != "plugin.wasm":
+            raise ValueError(f"package must preserve API 0.8.0 and plugin.wasm entry: {identity}")
         grants[identity] = manifest.get("capabilities", [])
     if not grants:
         raise ValueError("empty deployment")

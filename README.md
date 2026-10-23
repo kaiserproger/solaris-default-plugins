@@ -66,6 +66,10 @@ binary ABI compatibility:
 python3 tools/build_standard_pack.py --core-root /path/to/solaris --write
 ```
 
+The guest `Cargo.lock` files pin `solaris-plugin-sdk` at `0.8.0`, matching
+the selected core SDK. Update that pin with an SDK version migration: the
+builder uses `--locked` and refuses stale locks before compiling a component.
+
 The build validates the entire candidate before replacing any `plugin.wasm`.
 Use `--check` instead of `--write` for deterministic source/artifact verification.
 From the core checkout, run the sibling-owned gates with:
