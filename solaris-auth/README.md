@@ -7,7 +7,10 @@ explicit precommit registration is supported. The manifest declares the `auth`
 capability alongside `storage` as the explicit auth grant; the native
 fail-closed session gate is the only build/input enforcement path.
 
-Enable the native fail-closed session gate on the matching core build:
+Deploying this package turns the native fail-closed session gate on by itself
+(the manifest's `auth` capability is what core looks for), so the default
+`[auth] require_plugin_login = false` is enough. Setting it to `true` is still
+accepted and additionally makes startup fail when no auth package is deployed:
 
 ```toml
 [plugins]
@@ -32,7 +35,9 @@ quarantine (only the declared authentication commands may pass while locked).
   verifications also kick. Logout discards authentication and pending requests.
 - Before authentication, the native gate holds the session locked: only the
   declared authentication commands may pass, and no other input (including
-  block placement and breaking) reaches the world.
+  block placement and breaking) reaches the world. Any other command (for
+  example `/op`) and every chat line is refused with a short Russian/English
+  hint and is never broadcast.
 
 ## Storage and hashing
 
@@ -59,9 +64,10 @@ unencrypted offline-mode network are outside the plugin's control. Do not reuse
 valuable passwords. The plugin does not claim TLS or online-mode identity.
 
 The component API alone cannot intercept another package's commands, native
-commands or ordinary chat. Deploy with the native `[auth]` gate above; without it
-the plugin provides only prompts and timeout, **not** build protection or full
-input quarantine. Native v2 rejects `before-damage` declarations: incoming
+commands or ordinary chat. The native gate is enabled by deploying this package on a
+core build that includes the auto-enable rule (core versions before it need
+`[auth] require_plugin_login = true`; without the gate the plugin provides only
+prompts and timeout, **not** build protection or full input quarantine). Native v2 rejects `before-damage` declarations: incoming
 environment/mob damage is **not blocked** by this package. It makes no claim of
 full invulnerability or encrypted transport. Reconnect after a plugin instance
 restart.
