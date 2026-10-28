@@ -144,6 +144,7 @@ fn auth_command(name: &str, arguments: &[&str], raw_arguments: &str) -> Event {
             y: 64.0,
             z: -16.0,
         },
+        dimension: "minecraft:overworld".to_owned(),
         name: name.to_owned(),
         arguments: arguments
             .iter()

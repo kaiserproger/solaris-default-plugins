@@ -120,19 +120,19 @@ impl Settings {
             .unwrap_or(&self.default_group)
     }
 
-    /// The grant table command admission reads, as `"<identity> <node>"` rows.
+    /// Publish identity rows as well as `"<identity> <node>"` grants.
     ///
-    /// The default group is published as the `*` default row, so it applies only
-    /// to players without an explicit assignment: a moderator assigned away from
-    /// the default group must not keep the default group's nodes.
+    /// The default `*` applies only to players without an explicit assignment;
+    /// an identity-only row represents an assigned group with no grants.
     fn command_entries(&self, assignments: &BTreeMap<String, String>) -> Vec<String> {
         let mut entries = Vec::with_capacity(
-            self.groups[&self.default_group].len() + assignments.len() * MAX_GROUP_NODES,
+            self.groups[&self.default_group].len() + assignments.len() * (MAX_GROUP_NODES + 1),
         );
         for node in &self.groups[&self.default_group] {
             entries.push(format!("* {node}"));
         }
         for (uuid, group) in assignments {
+            entries.push(uuid.clone());
             for node in &self.groups[group] {
                 entries.push(format!("{uuid} {node}"));
             }
@@ -345,12 +345,10 @@ impl Permissions {
     fn storage_get(&mut self, outcome: &StorageGetOutcome) {
         let StorageGetOutcome::Read(record) = outcome else {
             self.loaded = false;
-            self.publish();
             return;
         };
         let Some(assignments) = self.settings().decode_assignments(record.value.as_deref()) else {
             self.loaded = false;
-            self.publish();
             return;
         };
         self.assignments = assignments;
@@ -369,8 +367,6 @@ impl Permissions {
         }
         let StorageCasOutcome::Committed(version) = outcome else {
             self.loaded = false;
-            self.assignments.clear();
-            self.publish();
             let request = self.next_request("reload");
             return vec![
                 message_session(
@@ -493,3 +489,35 @@ fn normalize_uuid(value: &str) -> Option<String> {
 }
 
 export_plugin!(Permissions);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn command_entries_include_every_assignment_within_host_limit() {
+        let nodes = (0..MAX_GROUP_NODES)
+            .map(|index| format!("test.node{index}"))
+            .collect::<BTreeSet<_>>();
+        let settings = Settings {
+            default_group: "full".into(),
+            maximum_assignments: MAX_ASSIGNMENTS,
+            groups: BTreeMap::from([("full".into(), nodes), ("empty".into(), BTreeSet::new())]),
+        };
+        let assignments = (0..MAX_ASSIGNMENTS)
+            .map(|index| (format!("{index:032x}"), "full".to_owned()))
+            .collect::<BTreeMap<_, _>>();
+        let entries = settings.command_entries(&assignments);
+        assert_eq!(
+            entries.len(),
+            MAX_GROUP_NODES + MAX_ASSIGNMENTS * (MAX_GROUP_NODES + 1)
+        );
+        assert!(entries.len() <= 8192);
+        assert!(assignments.keys().all(|uuid| entries.contains(uuid)));
+
+        let empty = BTreeMap::from([("00000000000000000000000000000001".into(), "empty".into())]);
+        assert!(settings
+            .command_entries(&empty)
+            .contains(&"00000000000000000000000000000001".into()));
+    }
+}

@@ -23,9 +23,9 @@ use mc_plugin_host::bindings::solaris::plugin::storage::{
 };
 use mc_plugin_host::bindings::solaris::plugin::types::Position;
 use mc_plugin_host::{
-    CompiledPlugin, DeploymentConfig, DiscoveryMode, HostQueues, HostServices, LogLevel,
-    NoSessions, PlayerSessions, PluginInstance, PluginLimits, PluginStartup, engine, linker,
-    start_deployment,
+    engine, linker, start_deployment, CompiledPlugin, DeploymentConfig, DiscoveryMode, HostQueues,
+    HostServices, LogLevel, NoSessions, PlayerSessions, PluginInstance, PluginLimits,
+    PluginStartup,
 };
 use mc_script::{
     PlayerCommandAdmission, ScriptBoundary, ScriptCommand, ScriptPlayerContext, ScriptPlayerId,
@@ -68,8 +68,16 @@ impl PlayerSessions for Sessions {
 }
 
 fn player_context() -> ScriptPlayerContext {
-    ScriptPlayerContext::try_new(PLAYER, "Ada", false, 32.0, 64.0, -16.0)
-        .expect("bounded standard-pack player context")
+    ScriptPlayerContext::try_new(
+        PLAYER,
+        "Ada",
+        false,
+        "minecraft:overworld",
+        32.0,
+        64.0,
+        -16.0,
+    )
+    .expect("bounded standard-pack player context")
 }
 
 fn enqueue_money(boundary: &ScriptBoundary) {
@@ -256,6 +264,7 @@ fn command(name: &str, arguments: &[&str], raw_arguments: &str, operator: bool) 
             y: 64.0,
             z: -16.0,
         },
+        dimension: "minecraft:overworld".to_owned(),
         name: name.to_owned(),
         arguments: arguments
             .iter()
@@ -423,17 +432,173 @@ fn standard_component_commands_keep_declared_state_boundaries() {
 
 #[test]
 #[ignore = "requires the explicit first-party sibling integration gate"]
+fn permissions_publish_empty_assignment_on_storage_and_commit_events() {
+    let config = r#"
+default_group = "player"
+maximum_assignments = 64
+[[groups]]
+name = "player"
+nodes = ["*"]
+[[groups]]
+name = "blocked"
+nodes = []
+[[groups]]
+name = "member"
+nodes = ["solaris.towns.claim"]
+"#;
+    let component = std::fs::read(package_path("solaris-permissions").join("plugin.wasm"))
+        .expect("permissions component exists");
+    let limits = PluginLimits::default();
+    let engine = engine(&limits).unwrap();
+    let compiled = CompiledPlugin::compile(&engine, &component, &limits, API_VERSION).unwrap();
+    let linker = linker::<Services>(&engine).unwrap();
+    let mut plugin = PluginInstance::instantiate(
+        &linker,
+        compiled.component(),
+        Services {
+            id: "solaris-permissions".into(),
+        },
+        limits,
+    )
+    .unwrap();
+    let permissions = Arc::new(mc_script::ScriptCommandPermissions::for_provider(
+        "solaris-permissions",
+    ));
+    plugin
+        .state()
+        .set_command_permissions(Some(Arc::clone(&permissions)));
+    let init = plugin
+        .init(
+            config,
+            InitContext {
+                plugin_id: "solaris-permissions".into(),
+                api_version: API_VERSION.into(),
+                world_fingerprint: String::new(),
+            },
+        )
+        .unwrap()
+        .into_commands();
+    let (request, _) = storage_get(init);
+    let compact = PLAYER.replace('-', "");
+    let read = Event::StorageGetAnswered(StorageGetAnswered {
+        request,
+        outcome: StorageGetOutcome::Read(StorageRecord {
+            value: Some(format!("v1|{compact},blocked")),
+            version: Some(1),
+        }),
+    });
+    plugin.on_events(context(1), &[read]).unwrap();
+    let node = "solaris.essentials.use";
+    assert!(!permissions.allows(PLAYER, node));
+    assert!(permissions.allows("00000000-0000-0000-0000-000000000001", node));
+    let check = plugin
+        .on_events(
+            context(1),
+            &[command(
+                "perm",
+                &["check", node],
+                "check solaris.essentials.use",
+                false,
+            )],
+        )
+        .unwrap()
+        .into_commands();
+    assert_eq!(session_message(check), "Permission denied.");
+
+    let update = plugin
+        .on_events(
+            context(1),
+            &[command(
+                "perm",
+                &["user", "me", "set", "member"],
+                "user me set member",
+                true,
+            )],
+        )
+        .unwrap()
+        .into_commands();
+    let (request, _) = storage_cas(update);
+    plugin
+        .on_events(context(1), &[storage_cas_committed(request)])
+        .unwrap();
+    assert!(permissions.allows(PLAYER, "solaris.towns.claim"));
+    assert!(!permissions.allows(PLAYER, node));
+    let update = plugin
+        .on_events(
+            context(1),
+            &[command(
+                "perm",
+                &["user", "me", "set", "blocked"],
+                "user me set blocked",
+                true,
+            )],
+        )
+        .unwrap()
+        .into_commands();
+    let (request, _) = storage_cas(update);
+    plugin
+        .on_events(context(1), &[storage_cas_committed(request)])
+        .unwrap();
+    assert!(!permissions.allows(PLAYER, node));
+    assert!(!permissions.allows(PLAYER, "solaris.towns.claim"));
+    // A conflicted change must not temporarily restore the default grants.
+    let update = plugin
+        .on_events(
+            context(1),
+            &[command(
+                "perm",
+                &["user", "me", "clear"],
+                "user me clear",
+                true,
+            )],
+        )
+        .unwrap()
+        .into_commands();
+    let (request, _) = storage_cas(update);
+    let reload = plugin
+        .on_events(context(1), &[storage_cas_refused(request)])
+        .unwrap()
+        .into_commands();
+    assert!(
+        !permissions.allows(PLAYER, node),
+        "conflict must retain the accepted empty assignment"
+    );
+    let request = reload
+        .iter()
+        .find_map(|command| match command {
+            Command::StorageGet(get) => Some(get.request.clone()),
+            _ => None,
+        })
+        .expect("conflict requests the authoritative assignments");
+    plugin
+        .on_events(
+            context(1),
+            &[Event::StorageGetAnswered(StorageGetAnswered {
+                request,
+                outcome: StorageGetOutcome::Failed(
+                    mc_plugin_host::bindings::solaris::plugin::storage::StorageFailure::Unavailable,
+                ),
+            })],
+        )
+        .unwrap();
+    assert!(
+        !permissions.allows(PLAYER, node),
+        "failed reload must not restore default grants"
+    );
+    plugin.shutdown().unwrap();
+}
+
+#[test]
+#[ignore = "requires the explicit first-party sibling integration gate"]
 fn standard_components_apply_normal_storage_aware_commands() {
     let (mut permissions, init) = instance("solaris-permissions");
     let (request, key) = storage_get(init);
     assert_eq!(key, "assignments-v1");
-    assert!(
-        permissions
-            .on_events(context(1), &[storage_read(request)])
-            .expect("permissions storage load succeeds")
-            .into_commands()
-            .is_empty()
-    );
+    assert!(permissions
+        .on_events(context(1), &[storage_read(request)])
+        .expect("permissions storage load succeeds")
+        .into_commands()
+        .is_empty());
     let groups = permissions
         .on_events(context(1), &[command("perm", &["groups"], "groups", false)])
         .expect("permissions command succeeds after its storage load")
@@ -444,13 +609,11 @@ fn standard_components_apply_normal_storage_aware_commands() {
     let (mut economy, init) = instance("solaris-economy");
     let (request, key) = storage_get(init);
     assert_eq!(key, "ledger-v1");
-    assert!(
-        economy
-            .on_events(context(1), &[storage_read(request)])
-            .expect("economy storage load succeeds")
-            .into_commands()
-            .is_empty()
-    );
+    assert!(economy
+        .on_events(context(1), &[storage_read(request)])
+        .expect("economy storage load succeeds")
+        .into_commands()
+        .is_empty());
     let balance = economy
         .on_events(context(1), &[command("money", &[], "", false)])
         .expect("economy command succeeds after its storage load")
@@ -461,13 +624,11 @@ fn standard_components_apply_normal_storage_aware_commands() {
     let (mut towns, init) = instance("solaris-towns");
     let (request, key) = storage_get(init);
     assert_eq!(key, "towns-v1");
-    assert!(
-        towns
-            .on_events(context(1), &[storage_read(request)])
-            .expect("town storage load succeeds")
-            .into_commands()
-            .is_empty()
-    );
+    assert!(towns
+        .on_events(context(1), &[storage_read(request)])
+        .expect("town storage load succeeds")
+        .into_commands()
+        .is_empty());
     let create = towns
         .on_events(
             context(1),
@@ -487,13 +648,11 @@ fn standard_components_apply_normal_storage_aware_commands() {
     let (mut audit, init) = instance("solaris-audit");
     let (request, key) = storage_get(init);
     assert_eq!(key, "actions-v1");
-    assert!(
-        audit
-            .on_events(context(1), &[storage_read(request)])
-            .expect("audit storage load succeeds")
-            .into_commands()
-            .is_empty()
-    );
+    assert!(audit
+        .on_events(context(1), &[storage_read(request)])
+        .expect("audit storage load succeeds")
+        .into_commands()
+        .is_empty());
     let records = audit
         .on_events(context(1), &[command("audit", &[], "", true)])
         .expect("audit command succeeds after its storage load")
@@ -551,13 +710,11 @@ fn standard_components_report_durable_conflicts() {
 
     let (mut towns, init) = instance("solaris-towns");
     let (request, _) = storage_get(init);
-    assert!(
-        towns
-            .on_events(context(1), &[storage_read(request)])
-            .expect("towns receives durable state")
-            .into_commands()
-            .is_empty()
-    );
+    assert!(towns
+        .on_events(context(1), &[storage_read(request)])
+        .expect("towns receives durable state")
+        .into_commands()
+        .is_empty());
     let save = towns
         .on_events(
             context(1),
@@ -609,7 +766,12 @@ fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
             .into_commands()
     };
     // Create the town, then claim the chunk under the leader's feet.
-    let (request, _) = storage_cas(send(command("town", &["create", "oak"], "create oak", false)));
+    let (request, _) = storage_cas(send(command(
+        "town",
+        &["create", "oak"],
+        "create oak",
+        false,
+    )));
     assert_eq!(
         session_message(send(storage_cas_committed(request))),
         "Town oak created."
@@ -618,7 +780,10 @@ fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
     let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
     assert_eq!((allowed, public_use), (vec![leader.clone()], false));
     assert_eq!(
-        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied))),
+        session_message(send(zone_answered(
+            zone.clone(),
+            ZoneCommandOutcome::Applied
+        ))),
         "Chunk claimed for oak."
     );
 
@@ -628,7 +793,10 @@ fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
     assert_eq!(allowed, vec![leader.clone(), guest.clone()]);
     assert!(!public_use);
     assert_eq!(
-        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied))),
+        session_message(send(zone_answered(
+            zone.clone(),
+            ZoneCommandOutcome::Applied
+        ))),
         "Guest trusted in your claims."
     );
     // Trusting the same guest twice is refused before any write.
@@ -638,14 +806,20 @@ fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
     );
 
     // The leader opens doors to everyone.
-    let (request, _) = storage_cas(send(command("town", &["flag", "use", "on"], "flag use on", false)));
+    let (request, _) = storage_cas(send(command(
+        "town",
+        &["flag", "use", "on"],
+        "flag use on",
+        false,
+    )));
     let (allowed, public_use, zone) = zone_upsert(send(storage_cas_committed(request)));
     assert_eq!(allowed, vec![leader.clone(), guest.clone()]);
     assert!(public_use);
-    assert!(
-        session_message(send(zone_answered(zone.clone(), ZoneCommandOutcome::Applied)))
-            .starts_with("Everyone may now use doors")
-    );
+    assert!(session_message(send(zone_answered(
+        zone.clone(),
+        ZoneCommandOutcome::Applied
+    )))
+    .starts_with("Everyone may now use doors"));
 
     // Untrusting removes the guest from the claim again.
     let (request, _) = storage_cas(send(command("town", &["untrust", GUEST], GUEST, false)));
@@ -662,7 +836,11 @@ fn towns_trust_and_flags_rewrite_every_claim_allow_list() {
     let (_, _, zone) = zone_upsert(send(storage_cas_committed(request)));
     let (request, _) = storage_cas(send(zone_answered(zone, ZoneCommandOutcome::Refused)));
     let restored = send(storage_cas_committed(request));
-    assert_eq!(restored.len(), 2, "the old allow-list is re-sent with the notice");
+    assert_eq!(
+        restored.len(),
+        2,
+        "the old allow-list is re-sent with the notice"
+    );
     let message = restored
         .into_iter()
         .filter_map(|command| match command {
@@ -691,22 +869,20 @@ fn economy_payment_uses_durable_receipt_and_reloads_after_a_lost_reply() {
     assert_eq!(key, "ledger-v1");
     let actor = PLAYER.replace('-', "");
     let old_ledger = format!("v1|{actor},100|{actor}:legacy");
-    assert!(
-        economy
-            .on_events(
-                context(1),
-                &[Event::StorageGetAnswered(StorageGetAnswered {
-                    request,
-                    outcome: StorageGetOutcome::Read(StorageRecord {
-                        value: Some(old_ledger),
-                        version: Some(4),
-                    }),
-                })],
-            )
-            .unwrap()
-            .into_commands()
-            .is_empty()
-    );
+    assert!(economy
+        .on_events(
+            context(1),
+            &[Event::StorageGetAnswered(StorageGetAnswered {
+                request,
+                outcome: StorageGetOutcome::Read(StorageRecord {
+                    value: Some(old_ledger),
+                    version: Some(4),
+                }),
+            })],
+        )
+        .unwrap()
+        .into_commands()
+        .is_empty());
     let recipient = "ffffffffffffffffffffffffffffffff";
     let raw = format!("{recipient} 7 deposit");
     let commands = economy
@@ -751,22 +927,20 @@ fn economy_payment_uses_durable_receipt_and_reloads_after_a_lost_reply() {
 
     let (mut replacement, init) = instance("solaris-economy");
     let (request, _) = storage_get(init);
-    assert!(
-        replacement
-            .on_events(
-                context(1),
-                &[Event::StorageGetAnswered(StorageGetAnswered {
-                    request,
-                    outcome: StorageGetOutcome::Read(StorageRecord {
-                        value: Some(ledger),
-                        version: Some(5),
-                    }),
-                })],
-            )
-            .unwrap()
-            .into_commands()
-            .is_empty()
-    );
+    assert!(replacement
+        .on_events(
+            context(1),
+            &[Event::StorageGetAnswered(StorageGetAnswered {
+                request,
+                outcome: StorageGetOutcome::Read(StorageRecord {
+                    value: Some(ledger),
+                    version: Some(5),
+                }),
+            })],
+        )
+        .unwrap()
+        .into_commands()
+        .is_empty());
     let retry = replacement
         .on_events(context(1), &[command("pay", &[], &raw, false)])
         .unwrap()

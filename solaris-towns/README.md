@@ -6,6 +6,8 @@ Each claimed chunk is a native protected zone whose allow-list is the town's lea
 
 - `/town trust <player|uuid>` / `/town untrust <player|uuid>` (leader or officer): add or remove a guest. A name must belong to an online player; a UUID works offline.
 - `/town flag use <on|off>` (leader): let everyone use doors, trapdoors, fence gates, buttons and levers in the claims (never containers).
-- `/town info [town]` reports members, claims, trusted guests and the door flag.
+- `/town info [town]` reports members, claims with dimension and chunk coordinates, trusted guests and the door flag.
 
-Every trust, flag, join or leave change commits durably and then rewrites each claim's zone; a refused rewrite rolls the change back. Storage is `towns-v1` rows (`v2`, with trusted guests and flags; a `v1` row is read as no guests and members-only doors). Commands map to the configured single dimension because command snapshots expose no dimension. Geopolitics, upkeep, war, taxes, and nation hierarchies are intentionally omitted.
+Every trust, flag, join or leave change commits durably and then rewrites each claim's zone; a refused rewrite rolls the change back. Claims and unclaims use the command player's server-authoritative dimension; the same chunk coordinates in different dimensions are independent. `minimum_y` and `maximum_y` apply to every dimension. The old `dimension` configuration field, if present, is ignored.
+
+Storage is `towns-v1`: `v3` rows record each claim's dimension, while older `v1` and `v2` claims without a dimension are interpreted as `minecraft:overworld` regardless of configuration. Existing Overworld zone IDs are retained on migration. Geopolitics, upkeep, war, taxes, and nation hierarchies are intentionally omitted.

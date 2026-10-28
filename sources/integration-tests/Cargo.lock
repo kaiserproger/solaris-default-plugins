@@ -638,7 +638,7 @@ dependencies = [
 
 [[package]]
 name = "mc-data"
-version = "0.0.8"
+version = "1.0.0-rc.1"
 dependencies = [
  "mc-domain",
  "mc-nbt",
@@ -652,11 +652,11 @@ dependencies = [
 
 [[package]]
 name = "mc-domain"
-version = "0.0.8"
+version = "1.0.0-rc.1"
 
 [[package]]
 name = "mc-nbt"
-version = "0.0.8"
+version = "1.0.0-rc.1"
 dependencies = [
  "bytemuck",
  "bytes",
@@ -665,12 +665,13 @@ dependencies = [
 
 [[package]]
 name = "mc-plugin-host"
-version = "0.0.8"
+version = "1.0.0-rc.1"
 dependencies = [
  "argon2",
  "mc-data",
  "mc-script",
  "rand_core",
+ "rustix",
  "serde",
  "serde_json",
  "sha2",
@@ -683,7 +684,7 @@ dependencies = [
 
 [[package]]
 name = "mc-script"
-version = "0.0.8"
+version = "1.0.0-rc.1"
 dependencies = [
  "arc-swap",
  "serde",

@@ -1,4 +1,3 @@
-dimension = "minecraft:overworld"
 minimum_y = -64
 maximum_y = 319
 maximum_towns = 12
