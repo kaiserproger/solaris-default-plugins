@@ -1,7 +1,7 @@
 //! Durable towns and chunk claims for the standard pack.
 //!
-//! This component preserves the original Lua package's town storage format,
-//! command wording, and optimistic storage/zone commit protocol. Player identity
+//! This component migrates the original Lua package's town storage format and
+//! preserves command wording and the optimistic storage/zone commit protocol. Player identity
 //! is always the stable UUID supplied by the server; command replies and
 //! connection-local invite effects retain their originating sessions.
 
@@ -28,7 +28,6 @@ const MAX_TRUSTED: usize = 16;
 
 #[derive(Clone)]
 struct Settings {
-    dimension: String,
     minimum_y: i64,
     maximum_y: i64,
     maximum_towns: usize,
@@ -45,17 +44,12 @@ impl Settings {
             .toml()
             .and_then(|value| value.as_table().cloned())
             .ok_or(Failure::Invalid)?;
-        let dimension = required_string(&table, "dimension")?.to_owned();
-        if !valid_dimension(&dimension) {
-            return Err(Failure::Invalid);
-        }
         let minimum_y = required_i64(&table, "minimum_y")?;
         let maximum_y = required_i64(&table, "maximum_y")?;
         if minimum_y > maximum_y {
             return Err(Failure::Invalid);
         }
         Ok(Self {
-            dimension,
             minimum_y,
             maximum_y,
             maximum_towns: bounded_usize(&table, "maximum_towns", 1, MAX_TOWNS)?,
@@ -117,6 +111,7 @@ impl Role {
 
 #[derive(Clone)]
 struct Claim {
+    dimension: String,
     x: i64,
     z: i64,
 }
@@ -300,10 +295,16 @@ impl Towns {
         let Some(town) = town else {
             return vec![message_session(session, "Town not found.")];
         };
+        let claims = town
+            .claims
+            .values()
+            .map(|claim| format!("{} ({}, {})", claim.dimension, claim.x, claim.z))
+            .collect::<Vec<_>>()
+            .join(", ");
         vec![message_session(
             session,
             format!(
-                "{}: {} members, {} claims. {} trusted guests, doors {}.",
+                "{}: {} members, {} claims. {} trusted guests, doors {}. Claims: {}",
                 town.name,
                 town.members.len(),
                 town.claims.len(),
@@ -313,6 +314,7 @@ impl Towns {
                 } else {
                     "members-only"
                 },
+                if claims.is_empty() { "none" } else { &claims },
             ),
         )]
     }
@@ -524,7 +526,7 @@ impl Towns {
         }
         let x = (invoked.position.x / 16.0).floor() as i64;
         let z = (invoked.position.z / 16.0).floor() as i64;
-        let key = claim_key(x, z);
+        let key = claim_key(&invoked.dimension, x, z);
         let owner = claim_owner(&self.towns, &key).map(|town| town.name.clone());
         if add {
             if owner.is_some() || total_claims(&self.towns) >= self.settings().maximum_claims {
@@ -533,7 +535,24 @@ impl Towns {
                     "Chunk is claimed or the claim limit is reached.",
                 )];
             }
-            let claim = Claim { x, z };
+            let claim = Claim {
+                dimension: invoked.dimension.clone(),
+                x,
+                z,
+            };
+            if !valid_dimension(&claim.dimension)
+                || self.towns.values().any(|other| {
+                    other
+                        .claims
+                        .values()
+                        .any(|existing| zone_id(other, existing) == zone_id(town, &claim))
+                })
+            {
+                return vec![message_session(
+                    invoked.session,
+                    "Claim dimension or zone ID is invalid.",
+                )];
+            }
             let mut after = self.towns.clone();
             after
                 .get_mut(name)
@@ -1003,27 +1022,19 @@ impl Plugin for Towns {
                 Event::ZoneCommandAnswered(answered) => {
                     commands.extend(self.zone_answered(&answered.zone, &answered.outcome));
                 }
-                Event::CommandBatchRejected => {
+                Event::CommandBatchRejected
                     if self
                         .pending
                         .as_ref()
-                        .is_some_and(|pending| matches!(pending.stage, PendingStage::Save))
-                    {
-                        self.pending = None;
-                    }
+                        .is_some_and(|pending| matches!(pending.stage, PendingStage::Save)) =>
+                {
+                    self.pending = None;
                 }
                 _ => {}
             }
         }
         Ok(commands)
     }
-}
-
-fn required_string<'a>(table: &'a Table, key: &str) -> Result<&'a str, Failure> {
-    table
-        .get(key)
-        .and_then(Value::as_str)
-        .ok_or(Failure::Invalid)
 }
 
 fn required_i64(table: &Table, key: &str) -> Result<i64, Failure> {
@@ -1060,7 +1071,8 @@ fn valid_dimension(value: &str) -> bool {
     let Some((namespace, path)) = value.split_once(':') else {
         return false;
     };
-    !namespace.is_empty()
+    value.len() <= 128
+        && !namespace.is_empty()
         && !path.is_empty()
         && !path.contains(':')
         && namespace.bytes().all(|byte| {
@@ -1086,8 +1098,8 @@ fn valid_name(value: &str) -> bool {
         })
 }
 
-fn claim_key(x: i64, z: i64) -> String {
-    format!("{x}:{z}")
+fn claim_key(dimension: &str, x: i64, z: i64) -> String {
+    format!("{dimension}:{x}:{z}")
 }
 
 fn coordinate_id(value: i64) -> String {
@@ -1099,12 +1111,22 @@ fn coordinate_id(value: i64) -> String {
 }
 
 fn zone_id(town: &Town, claim: &Claim) -> String {
-    format!(
-        "town-{}-{}-{}",
-        town.name,
-        coordinate_id(claim.x),
-        coordinate_id(claim.z)
-    )
+    if claim.dimension == "minecraft:overworld" {
+        return format!(
+            "town-{}-{}-{}",
+            town.name,
+            coordinate_id(claim.x),
+            coordinate_id(claim.z)
+        );
+    }
+    // The native zone ID is limited to 64 bytes; dimensions may be 128 bytes.
+    // FNV-1a is stable across restarts. Collisions are rejected before use.
+    let mut hash = 0x6c62272e07bb014262b821756295c58d_u128;
+    for byte in format!("{}|{}|{}|{}", town.name, claim.dimension, claim.x, claim.z).bytes() {
+        hash ^= u128::from(byte);
+        hash = hash.wrapping_mul(0x0000000001000000000000000000013b);
+    }
+    format!("town-d-{hash:032x}")
 }
 
 fn member_town<'a>(towns: &'a BTreeMap<String, Town>, uuid: &str) -> Option<&'a Town> {
@@ -1119,8 +1141,7 @@ fn total_claims(towns: &BTreeMap<String, Town>) -> usize {
     towns.values().map(|town| town.claims.len()).sum()
 }
 
-/// Rows are `name,leader,members,claims` (`v1`, no trusted guests, no flags) or
-/// `name,leader,members,claims,trusted,flags` (`v2`); the encoder writes `v2`.
+/// v1/v2 claims are dimensionless; v3 claims include the dimension.
 fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<String, Town>> {
     let Some(value) = value else {
         return Some(BTreeMap::new());
@@ -1128,7 +1149,7 @@ fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<Str
     let (version, rows) = value.split_once('|')?;
     let width = match version {
         "v1" => 4,
-        "v2" => 6,
+        "v2" | "v3" => 6,
         _ => return None,
     };
     let mut towns = BTreeMap::new();
@@ -1164,12 +1185,39 @@ fn decode_towns(value: Option<&str>, settings: &Settings) -> Option<BTreeMap<Str
             return None;
         }
         for claim in claims.split('+').filter(|claim| !claim.is_empty()) {
-            let (x, z) = claim.split_once(':')?;
-            let (Ok(x), Ok(z)) = (x.parse::<i64>(), z.parse::<i64>()) else {
+            let (dimension, coordinates) = if version == "v3" {
+                let (prefix, z) = claim.rsplit_once(':')?;
+                let (dimension, x) = prefix.rsplit_once(':')?;
+                (dimension, (x, z))
+            } else {
+                ("minecraft:overworld", claim.split_once(':')?)
+            };
+            if !valid_dimension(dimension) {
+                return None;
+            }
+            let (Ok(x), Ok(z)) = (coordinates.0.parse::<i64>(), coordinates.1.parse::<i64>())
+            else {
                 return None;
             };
-            let key = claim_key(x, z);
-            if town.claims.insert(key, Claim { x, z }).is_some() {
+            let key = claim_key(dimension, x, z);
+            let claim = Claim {
+                dimension: dimension.to_owned(),
+                x,
+                z,
+            };
+            if claim_owner(&towns, &key).is_some()
+                || towns.values().any(|other: &Town| {
+                    other
+                        .claims
+                        .values()
+                        .any(|existing| zone_id(other, existing) == zone_id(&town, &claim))
+                })
+                || town
+                    .claims
+                    .values()
+                    .any(|existing| zone_id(&town, existing) == zone_id(&town, &claim))
+                || town.claims.insert(key, claim).is_some()
+            {
                 return None;
             }
         }
@@ -1216,7 +1264,7 @@ fn encode_towns(towns: &BTreeMap<String, Town>) -> String {
             )
         })
         .collect::<Vec<_>>();
-    format!("v2|{}", rows.join(";"))
+    format!("v3|{}", rows.join(";"))
 }
 
 /// Everyone the town's claims admit: its members of every role, then trusted
@@ -1232,7 +1280,7 @@ fn allow_list(town: &Town) -> Vec<String> {
 fn upsert_claim(town: &Town, claim: &Claim, settings: &Settings) -> Command {
     commands::Command::UpsertProtectedZone(commands::UpsertProtectedZone {
         zone: zone_id(town, claim),
-        dimension: settings.dimension.clone(),
+        dimension: claim.dimension.clone(),
         allowed_actor_uuids: allow_list(town),
         public_use: town.public_use,
         minimum: types::Position {
@@ -1255,3 +1303,6 @@ fn remove_zone(zone: &str) -> Command {
 }
 
 export_plugin!(Towns);
+
+#[cfg(test)]
+mod tests;

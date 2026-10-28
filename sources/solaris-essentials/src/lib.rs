@@ -59,19 +59,22 @@ impl Settings {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct StoredPosition {
+    // Legacy v1 records did not record a dimension. Never guess their world.
+    dimension: Option<String>,
     x: f64,
     y: f64,
     z: f64,
 }
 
-impl From<Position> for StoredPosition {
-    fn from(value: Position) -> Self {
+impl StoredPosition {
+    fn new(position: Position, dimension: &str) -> Self {
         Self {
-            x: value.x,
-            y: value.y,
-            z: value.z,
+            dimension: Some(dimension.to_owned()),
+            x: position.x,
+            y: position.y,
+            z: position.z,
         }
     }
 }
@@ -132,6 +135,7 @@ struct TeleportRequest {
     session: u64,
     old: StoredPosition,
     label: String,
+    dimension: String,
 }
 
 #[derive(Clone)]
@@ -232,7 +236,7 @@ impl Essentials {
                 kind,
                 name,
                 value,
-                old: invoked.position.into(),
+                old: StoredPosition::new(invoked.position, &invoked.dimension),
             },
         );
         storage_get(&request, &key)
@@ -245,6 +249,19 @@ impl Essentials {
         old: StoredPosition,
         label: &str,
     ) -> Command {
+        let Some(dimension) = target.dimension.as_deref() else {
+            return message_session(
+                session,
+                "Location dimension is unknown; save it again with /sethome or /setwarp.",
+            );
+        };
+        if old.dimension.as_deref() != Some(dimension) {
+            return message_session(
+                session,
+                format!("Cross-dimension teleport is unavailable; {label} is in {dimension}."),
+            );
+        }
+        let dimension = dimension.to_owned();
         let request = self.next_request("teleport");
         self.pending_teleports.insert(
             request.clone(),
@@ -252,11 +269,13 @@ impl Essentials {
                 session,
                 old,
                 label: label.to_owned(),
+                dimension: dimension.clone(),
             },
         );
         Command::TeleportPlayer(TeleportPlayer {
             request,
             session,
+            dimension,
             position: target.into(),
         })
     }
@@ -269,7 +288,7 @@ impl Essentials {
         message: Option<String>,
     ) -> Command {
         let request = self.next_request("online");
-        let position: StoredPosition = invoked.position.into();
+        let position: StoredPosition = StoredPosition::new(invoked.position, &invoked.dimension);
         self.pending_queries.insert(
             request.clone(),
             OnlineRequest {
@@ -329,7 +348,8 @@ impl Essentials {
             kind,
             format!("homes:{uuid}"),
             name,
-            kind.is_set().then(|| invoked.position.into()),
+            kind.is_set()
+                .then(|| StoredPosition::new(invoked.position, &invoked.dimension)),
         )]
     }
 
@@ -364,7 +384,8 @@ impl Essentials {
             kind,
             "warps-v1".to_owned(),
             name,
-            kind.is_set().then(|| invoked.position.into()),
+            kind.is_set()
+                .then(|| StoredPosition::new(invoked.position, &invoked.dimension)),
         )]
     }
 
@@ -399,13 +420,18 @@ impl Essentials {
                 "No back location is available.",
             )];
         }
-        let Some(target) = self.backs.get(&invoked.session).copied() else {
+        let Some(target) = self.backs.get(&invoked.session).cloned() else {
             return vec![message_session(
                 invoked.session,
                 "No back location is available.",
             )];
         };
-        vec![self.begin_teleport(invoked.session, target, invoked.position.into(), "Back")]
+        vec![self.begin_teleport(
+            invoked.session,
+            target,
+            StoredPosition::new(invoked.position, &invoked.dimension),
+            "Back",
+        )]
     }
 
     fn tpa(&mut self, invoked: &CommandInvoked, words: &[&str]) -> Vec<Command> {
@@ -437,7 +463,7 @@ impl Essentials {
                 username: invoked.username.clone(),
                 target_name: String::new(),
                 message: None,
-                target_position: invoked.position.into(),
+                target_position: StoredPosition::new(invoked.position, &invoked.dimension),
                 accepted_tpa: Some(accepted_tpa),
             },
         );
@@ -516,7 +542,7 @@ impl Essentials {
             )];
         };
         if current.kind.is_get() {
-            let Some(target) = values.get(&current.name).copied() else {
+            let Some(target) = values.get(&current.name).cloned() else {
                 return vec![message_session(current.session, "Location not found.")];
             };
             return vec![self.begin_teleport(current.session, target, current.old, &current.name)];
@@ -594,11 +620,30 @@ impl Essentials {
                     "Requester is no longer online.",
                 )];
             };
+            if current.target_position.dimension.as_deref() != Some(&requester.dimension) {
+                return vec![
+                    message_session(
+                        requester.session,
+                        format!(
+                            "Cross-dimension teleport is unavailable; TPA is in {}.",
+                            current
+                                .target_position
+                                .dimension
+                                .as_deref()
+                                .unwrap_or("an unknown dimension"),
+                        ),
+                    ),
+                    message_session(
+                        current.session,
+                        "TPA refused: players are in different dimensions.",
+                    ),
+                ];
+            }
             return vec![
                 self.begin_teleport(
                     requester.session,
                     current.target_position,
-                    requester.position.into(),
+                    StoredPosition::new(requester.position, &requester.dimension),
                     "TPA",
                 ),
                 message_session(current.session, "TPA accepted."),
@@ -663,7 +708,7 @@ impl Essentials {
             }
             PlayerTeleportOutcome::Refused(failure) => vec![message_session(
                 current.session,
-                format!("Teleport failed: {failure:?}."),
+                format!("Teleport to {} failed: {failure:?}.", current.dimension),
             )],
         }
     }
@@ -752,7 +797,10 @@ impl Plugin for Essentials {
                 }
                 Event::TimerFired(timer) => commands.extend(self.timer(&timer.timer_id)),
                 Event::PlayerDied(died) => {
-                    self.backs.insert(died.session, died.position.into());
+                    self.backs.insert(
+                        died.session,
+                        StoredPosition::new(died.position, &died.dimension),
+                    );
                 }
                 Event::PlayerLeft(left) => commands.extend(self.player_left(left.session)),
                 Event::CommandBatchRejected => unreachable!("rejection handled before snapshot"),
@@ -807,20 +855,27 @@ fn decode_positions(
     let Some(value) = value else {
         return Some(BTreeMap::new());
     };
-    if value == "v1|" {
-        return Some(BTreeMap::new());
-    }
-    let rows = value.strip_prefix("v1|")?;
+    let (rows, dimensional) = if let Some(rows) = value.strip_prefix("v2|") {
+        (rows, true)
+    } else {
+        (value.strip_prefix("v1|")?, false)
+    };
     let mut positions = BTreeMap::new();
     for row in rows.split(';').filter(|row| !row.is_empty()) {
         let mut fields = row.split(',');
-        let (Some(name), Some(x), Some(y), Some(z), None) = (
-            fields.next(),
-            fields.next(),
-            fields.next(),
-            fields.next(),
-            fields.next(),
-        ) else {
+        let name = fields.next()?;
+        let dimension = if dimensional {
+            match fields.next()? {
+                "" => None,
+                value if valid_dimension(value) => Some(value.to_owned()),
+                _ => return None,
+            }
+        } else {
+            None
+        };
+        let (Some(x), Some(y), Some(z), None) =
+            (fields.next(), fields.next(), fields.next(), fields.next())
+        else {
             return None;
         };
         let (Ok(x), Ok(y), Ok(z)) = (x.parse::<f64>(), y.parse::<f64>(), z.parse::<f64>()) else {
@@ -834,7 +889,7 @@ fn decode_positions(
         {
             return None;
         }
-        positions.insert(name.to_owned(), StoredPosition { x, y, z });
+        positions.insert(name.to_owned(), StoredPosition { dimension, x, y, z });
         if positions.len() > maximum {
             return None;
         }
@@ -845,9 +900,35 @@ fn decode_positions(
 fn encode_positions(positions: &BTreeMap<String, StoredPosition>) -> String {
     let rows = positions
         .iter()
-        .map(|(name, position)| format!("{name},{},{},{}", position.x, position.y, position.z))
+        .map(|(name, position)| {
+            format!(
+                "{name},{},{},{},{}",
+                position.dimension.as_deref().unwrap_or(""),
+                position.x,
+                position.y,
+                position.z,
+            )
+        })
         .collect::<Vec<_>>();
-    format!("v1|{}", rows.join(";"))
+    format!("v2|{}", rows.join(";"))
+}
+
+fn valid_dimension(value: &str) -> bool {
+    value.len() <= 128
+        && value.split_once(':').is_some_and(|(namespace, path)| {
+            !namespace.is_empty()
+                && !path.is_empty()
+                && namespace.bytes().all(|byte| {
+                    byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || matches!(byte, b'_' | b'-' | b'.')
+                })
+                && path.bytes().all(|byte| {
+                    byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || matches!(byte, b'_' | b'-' | b'.' | b'/')
+                })
+        })
 }
 
 fn find_player<'a>(players: &'a [PlayerSnapshot], username: &str) -> Option<&'a PlayerSnapshot> {
@@ -868,3 +949,6 @@ fn tpa_timer(session: u64) -> String {
 }
 
 export_plugin!(Essentials);
+
+#[cfg(test)]
+mod tests;
