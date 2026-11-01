@@ -1,0 +1,19 @@
+id = "computer"
+name = "Computer"
+version = "0.1.0"
+api = "0.8.0"
+entry = "plugin.wasm"
+
+[client]
+schema = 2
+
+[[client.bundles]]
+id = "computer-content"
+version = "1"
+artifact = "client/computer-content.zip"
+sha256 = "39fd4eb94d0be4879d78d4257680a4a918698a9c26f934d77a4617c051d08705"
+size_bytes = 2441
+loaders = ["fabric", "neoforge", "forge"]
+content = ["blocks", "items", "assets"]
+permissions = ["register_blocks", "register_items", "load_assets"]
+required = true

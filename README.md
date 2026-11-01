@@ -31,6 +31,9 @@ Optional components:
   `public_after_seconds` elapses. It declares the `death_graves` capability; two
   packages declaring it refuse startup. Build explicitly with
   `--package graves`; it is not enabled by the default pack.
+- `computer` — optional monitor item/block content for the existing edge
+  computer/screen feature. Build explicitly with `--package computer`; it is
+  not part of the default pack. See [Computer monitor](#computer-monitor).
 
 Legacy source/reference examples (not deployable components):
 
@@ -130,9 +133,88 @@ Package API/configuration validation belongs to the server, not the copy
 script. The core binary loads deployed directories only; it never compiles
 these sources in. Manual copying remains valid on other platforms.
 
+## Computer monitor
+
+`computer` contributes the real `computer:monitor` item at startup (stack 64,
+no durability) and a matching carrier-backed block in its verified schema-2
+client archive. Both use `minecraft:gray_glazed_terracotta`; the block drops
+`computer:monitor`. The archive includes an authored monitor block model,
+matching item definition/model, and original idle-screen/case textures.
+No Mojang image/model bytes are copied into this package; the vanilla model
+parent is referenced by id.
+
+This package is declarative content only. It does not spawn processes,
+implement a relay, add commands, or register crafting recipes. Computer
+sessions and `solaris:screen` / `solaris:computer` remain edge/client-owned
+features with their existing opt-in and consent requirements. Installing the
+content does not enable those features or grant desktop capture/input access.
+Servers must use the core's `computer:monitor` identity, not the former private
+`solaris:monitor` id; there is no alias.
+
+### Client support
+
+| Client | Monitor content |
+| --- | --- |
+| Java with Fabric Loader | Targeted by the required block/item/asset bundle |
+| Java with NeoForge Loader | Targeted by the same required bundle |
+| Java with Forge Loader | Targeted by the same required bundle |
+| Native `solaris-client` | Unsupported: its Loader rejects block content/indexes; excluded from this bundle |
+| Vanilla Java without Solaris Loader | Unsupported: this package requires Loader client content |
+
+The real component and archive have passed simultaneous monitor/Ruby/Sapphire
+grant, placement, rendering, break and custom-item pickup cycles on all three
+Java adapters. The matching core ADR 0018 records the exact 2026-11-01 live
+receipts. These content gates do not prove terminal, capture or screen-relay UI.
+The edge relay admits Fabric/native sessions, not NeoForge/Forge; native's relay
+implementation does not overcome its block archive refusal. No fallback to
+vanilla terracotta is provided.
+
+### Build, install and acquire
+
+The source checkout alone is not deployable until its generated archive and
+component exist. From this repository, using the same core SDK/WIT and Loader
+revision as the server:
+
+```sh
+python3 sources/computer/build_bundle.py
+python3 tools/build_standard_pack.py \
+  --core-root /path/to/solaris --loader-root /path/to/solaris-loader \
+  --package computer --build-root /path/to/build-output/computer --write
+bash install.sh --directory /path/to/server/plugins computer
+```
+
+The first command follows the chisel authoring convention: hashes every
+authored asset into the schema-2 index, writes a deterministic archive (index
+first, sorted assets, fixed timestamps), and refreshes the actual archive hash
+and size in `computer/plugin.toml`. Run it after asset changes. The second
+builds the API 0.8.0 component and runs the existing native/Java authoring
+validators before publishing `computer/plugin.wasm`. Neither command is run
+by the installer. For an isolated immutable deployment, use
+`--output-dir /path/to/new-candidate` instead of `--write`; the package is then
+under that candidate's `plugins/computer/`.
+
+Stop the server before installation, keep all other deployed ids in
+`plugins.expected`, and add `"computer"`. Default builder/installer selections
+are unchanged; this package must be selected explicitly.
+Adding the custom item/carrier changes the persisted plugin startup identity.
+An existing world with a different identity is refused, not automatically
+migrated; installing this optional package does not rewrite saved worlds.
+With the package activated and the required Loader bundle accepted, an operator
+can obtain a monitor through the existing command:
+
+```text
+/give @s computer:monitor 1
+```
+
+Place it as an ordinary block. Its south model face is the screen; the carrier's
+horizontal `facing` determines the screen face in-world. Break/drop, inventory
+and persistence behavior use the core carrier-block path, not plugin-owned
+world state. Ruby and Sapphire retain their pink/blue glazed-terracotta
+carriers; this package reserves only gray glazed terracotta.
+
 ## Component API contract
 
-- API 0.8 applies to the five standard packages and optional `basic-economy`, `solaris-auth`, `chisel` and `graves`;
+- API 0.8 applies to the five standard packages and optional `basic-economy`, `solaris-auth`, `chisel`, `graves` and `computer`;
   legacy reference examples above retain historical manifests and are not
   installation targets.
 - Server-only unless the manifest says otherwise; commands work with a vanilla

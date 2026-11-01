@@ -1,0 +1,14 @@
+[package]
+name = "computer-plugin"
+description = "Declarative monitor content for the Solaris edge computer feature."
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+name = "computer_plugin"
+
+[dependencies]
+solaris-plugin-sdk = { path = "../../../solaris/sdk/rust/solaris-plugin-sdk" }
+wit-bindgen = "0.62"

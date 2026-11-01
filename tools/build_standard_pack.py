@@ -33,10 +33,11 @@ PACKAGES = (
     Package("solaris-auth", "solaris_auth_plugin.wasm"),
     Package("chisel", "chisel_plugin.wasm"),
     Package("graves", "solaris_graves_plugin.wasm"),
+    Package("computer", "computer_plugin.wasm"),
 )
 # Rebuild every shipped component on SDK changes; installation remains opt-in.
-# Optional addons (chisel) stay out of the default selection; build them with
-# --package. test_content_pipeline.py pins this selection.
+# Optional addons stay out of the default selection; build them with --package.
+# test_content_pipeline.py pins the default selection.
 STANDARD_PACKAGES = (
     Package("solaris-permissions", "solaris_permissions_plugin.wasm"),
     Package("solaris-essentials", "solaris_essentials_plugin.wasm"),

@@ -11,6 +11,7 @@ usage() {
     'Usage: bash install.sh --directory SERVER_PLUGIN_DIR [PACKAGE ...]' \
     'Run from a downloaded checkout; no build or network access is needed.' \
     'With no package names, installs the five standard server-only packages.' \
+    'Optional packages, including computer, must be named explicitly.' \
     'Existing packages are never replaced. Stop the server before installing.'
 }
 
